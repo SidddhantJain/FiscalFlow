@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Insights &amp; Leakage Detector | FiscalFlow</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#6cf8bb",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#002f29",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#bcc7de",
+                        "on-secondary-container": "#00714d",
+                        "on-tertiary-container": "#00a292",
+                        "on-surface": "#0b1c30",
+                        "surface": "#f8f9ff",
+                        "inverse-on-surface": "#eaf1ff",
+                        "tertiary": "#001815",
+                        "inverse-surface": "#213145",
+                        "on-primary-container": "#8590a6",
+                        "surface-container": "#e5eeff",
+                        "background": "#f8f9ff",
+                        "outline-variant": "#c5c6cd",
+                        "on-secondary-fixed-variant": "#005236",
+                        "surface-container-highest": "#d3e4fe",
+                        "primary-container": "#1e293b",
+                        "surface-container-high": "#dce9ff",
+                        "secondary-fixed": "#6ffbbe",
+                        "surface-dim": "#cbdbf5",
+                        "secondary": "#006c49",
+                        "secondary-fixed-dim": "#4edea3",
+                        "on-primary-fixed": "#111c2d",
+                        "surface-bright": "#f8f9ff",
+                        "primary-fixed": "#d8e3fb",
+                        "surface-variant": "#d3e4fe",
+                        "error": "#ba1a1a",
+                        "on-background": "#0b1c30",
+                        "tertiary-fixed-dim": "#4fdbc8",
+                        "on-tertiary-fixed": "#00201c",
+                        "on-tertiary-fixed-variant": "#005048",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#71f8e4",
+                        "primary": "#091426",
+                        "on-primary-fixed-variant": "#3c475a",
+                        "on-secondary-fixed": "#002113",
+                        "surface-container-low": "#eff4ff",
+                        "outline": "#75777d",
+                        "on-error-container": "#93000a",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#bcc7de",
+                        "surface-tint": "#545f73",
+                        "on-surface-variant": "#45474c",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "container-max": "1440px",
+                        "density-high": "8px",
+                        "density-medium": "16px",
+                        "unit": "4px",
+                        "margin-desktop": "32px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "data-mono": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "display-lg-mobile": ["28px", {"lineHeight": "34px", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "title-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "data-mono": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #f8f9ff;
+            font-family: 'Inter', sans-serif;
+            color: #0b1c30;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid #e2e8f0;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .chart-grid-line {
+            stroke: #F1F5F9;
+            stroke-dasharray: 2 2;
+        }
+    </style>
+</head>
+<body class="bg-background overflow-x-hidden">
+<!-- SideNavBar (Predicted Component) -->
+<aside class="h-screen w-64 fixed left-0 top-0 hidden lg:flex flex-col bg-surface-container-lowest border-r border-outline-variant z-50">
+<div class="flex flex-col h-full py-density-medium px-density-high">
+<div class="mb-10 px-4">
+<h1 class="font-display-lg text-display-lg text-primary font-bold">FiscalFlow</h1>
+<p class="font-body-md text-on-surface-variant opacity-70">Wealth Intelligence</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">dashboard</span>
+<span class="font-body-md">Dashboard</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">receipt_long</span>
+<span class="font-body-md">Transactions</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-body-md">Analytics</span>
+</a>
+<a class="flex items-center px-4 py-3 text-primary font-bold border-r-4 border-primary bg-surface-container-high" href="#">
+<span class="material-symbols-outlined mr-3">psychology</span>
+<span class="font-body-md">AI Insights</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">target</span>
+<span class="font-body-md">Goals</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">subscriptions</span>
+<span class="font-body-md">Subscriptions</span>
+</a>
+</nav>
+<div class="mt-auto border-t border-outline-variant pt-4 space-y-1">
+<a class="flex items-center px-4 py-2 text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">settings</span>
+<span class="text-body-sm">Settings</span>
+</a>
+<div class="mx-4 my-4 p-4 bg-primary-container rounded-xl text-on-primary">
+<p class="font-label-caps text-label-caps mb-2 opacity-80 uppercase">Premium Account</p>
+<p class="font-title-sm text-title-sm mb-3">Upgrade to Pro</p>
+<button class="w-full py-2 bg-secondary-container text-on-secondary-container font-bold rounded-lg text-body-sm">Get Insights</button>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopAppBar (Predicted Component) -->
+<header class="fixed top-0 right-0 w-full lg:pl-64 h-16 z-40 bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center px-margin-desktop">
+<div class="flex items-center gap-6">
+<div class="flex items-center space-x-2">
+<span class="font-title-sm text-title-sm text-on-surface-variant">Net Worth:</span>
+<span class="font-data-mono text-data-mono text-primary">₹1,24,50,000</span>
+</div>
+<div class="flex items-center space-x-2 hidden md:flex">
+<span class="font-title-sm text-title-sm text-on-surface-variant">Health Score:</span>
+<span class="font-data-mono text-data-mono text-secondary">88/100</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline">
+<img alt="User Profile Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a sophisticated business executive in a modern workspace, lit by soft morning sunlight. The portrait has a high-end corporate aesthetic with a shallow depth of field, using a palette of neutral professional tones like charcoal and slate blue." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTfNV95L4Jq7-k7b8H6NuscBXqTaG4lW4PdJZiuNGxxjEKTfxOLTKOAeEv9EtFAgzBq7zfELchscl09P7h6BCIBSGPRVwBYAwk6m35jg00wEvUq9-pHIx2YBCTs6RYNi5TZrguArctEaSdze2zn1JuReayUEzsEk5RorCKtD35cfCn5-nNAHV2fbVpNCXV7RB7eOt7lh4aGfSHo4b4wA1dZ20KkxO9fkGODIjCFDxIKNkVKRCSuDy8-P72PGYVBtJT3VfhNjEAMw"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="lg:pl-64 pt-20 pb-24 lg:pb-8 min-h-screen">
+<div class="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop py-density-medium">
+<!-- Natural Language Query Bar -->
+<section class="mb-8">
+<div class="glass-card rounded-xl p-6 flex flex-col md:flex-row items-center gap-4 border-primary/10 shadow-sm">
+<div class="flex-shrink-0 bg-primary w-12 h-12 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary">psychology</span>
+</div>
+<div class="flex-grow w-full relative">
+<input class="w-full bg-surface-container-low border-none focus:ring-2 focus:ring-primary rounded-lg py-4 px-6 font-body-md placeholder:text-on-surface-variant/50 transition-all" placeholder="Ask FiscalFlow: 'How much did I spend on Swiggy last quarter?'" type="text"/>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+<span class="text-on-surface-variant/40 text-body-sm hidden md:block">Press ↵</span>
+<button class="bg-primary text-on-primary p-2 rounded-lg hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Analytical Grid Layout -->
+<div class="bento-grid grid-cols-1 md:grid-cols-12">
+<!-- Cashflow Predictor (Large Chart) -->
+<div class="col-span-1 md:col-span-8 glass-card rounded-xl p-6">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="font-headline-md text-headline-md text-primary">Cashflow Predictor</h3>
+<p class="font-body-sm text-on-surface-variant">Forecasted balance based on 12-month spending trends</p>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-low px-3 py-1 rounded-full">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-caps text-label-caps text-secondary">PROJECTION</span>
+</div>
+</div>
+<div class="relative h-64 w-full">
+<svg class="w-full h-full" viewbox="0 0 800 240">
+<!-- Grid lines -->
+<line class="chart-grid-line" x1="0" x2="800" y1="40" y2="40"></line>
+<line class="chart-grid-line" x1="0" x2="800" y1="100" y2="100"></line>
+<line class="chart-grid-line" x1="0" x2="800" y1="160" y2="160"></line>
+<line class="chart-grid-line" x1="0" x2="800" y1="220" y2="220"></line>
+<!-- Historical Area -->
+<path d="M0 160 Q 100 140, 200 150 T 400 120 L 400 240 L 0 240 Z" fill="#091426" fill-opacity="0.05"></path>
+<!-- Historical Line -->
+<path d="M0 160 Q 100 140, 200 150 T 400 120" fill="none" stroke="#091426" stroke-width="2"></path>
+<!-- Prediction Area -->
+<path d="M400 120 Q 500 100, 600 130 T 800 90 L 800 240 L 400 240 Z" fill="#006c49" fill-opacity="0.05"></path>
+<!-- Prediction Line -->
+<path d="M400 120 Q 500 100, 600 130 T 800 90" fill="none" stroke="#006c49" stroke-dasharray="6 4" stroke-width="2"></path>
+<!-- Anchor Point -->
+<circle cx="400" cy="120" fill="#ffffff" r="4" stroke="#091426" stroke-width="2"></circle>
+</svg>
+<div class="flex justify-between mt-4">
+<span class="font-label-caps text-label-caps text-on-surface-variant">MAY 15 (TODAY)</span>
+<span class="font-label-caps text-label-caps text-secondary">JUNE 15 (EST.)</span>
+</div>
+</div>
+<div class="mt-6 flex gap-6 pt-6 border-t border-outline-variant">
+<div>
+<p class="font-body-sm text-on-surface-variant">Exp. Month End Balance</p>
+<p class="font-headline-md text-headline-md text-primary font-data-mono">₹4,82,400</p>
+</div>
+<div class="border-l border-outline-variant pl-6">
+<p class="font-body-sm text-on-surface-variant">Recurring Bills Remaining</p>
+<p class="font-headline-md text-headline-md text-error font-data-mono">₹42,150</p>
+</div>
+</div>
+</div>
+<!-- Expense Leakage Detector (Medium Side) -->
+<div class="col-span-1 md:col-span-4 glass-card rounded-xl p-6 bg-error-container/10 border-error/20">
+<div class="mb-4">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-error">warning</span>
+<h3 class="font-title-sm text-title-sm text-error">Leakage Detector</h3>
+</div>
+<p class="font-body-sm text-on-surface-variant">We found 3 major leaks this week</p>
+</div>
+<div class="space-y-4">
+<div class="p-3 bg-white border border-outline-variant rounded-lg">
+<div class="flex justify-between items-center mb-2">
+<span class="font-label-caps text-label-caps text-error bg-error-container px-2 py-0.5 rounded">WEEKEND SPIKE</span>
+<span class="font-data-mono text-data-mono text-error font-bold">+₹14,500</span>
+</div>
+<p class="font-body-sm text-on-surface">Dining &amp; Nightlife exceeded planned limit by 42% on Saturday night.</p>
+</div>
+<div class="p-3 bg-white border border-outline-variant rounded-lg">
+<div class="flex justify-between items-center mb-2">
+<span class="font-label-caps text-label-caps text-primary bg-surface-container px-2 py-0.5 rounded">IMPULSE BUY</span>
+<span class="font-data-mono text-data-mono">₹8,990</span>
+</div>
+<p class="font-body-sm text-on-surface">Unplanned 'Electronics' purchase detected via Amazon India.</p>
+</div>
+<div class="flex justify-center pt-2">
+<button class="text-body-sm text-primary font-bold flex items-center hover:underline">
+                                Full Analysis <span class="material-symbols-outlined text-[18px] ml-1">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="mt-6 pt-6 border-t border-outline-variant/30">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-3 uppercase">Spending Mix</p>
+<div class="h-3 w-full bg-surface-container rounded-full overflow-hidden flex">
+<div class="h-full bg-primary w-[65%]" title="Planned"></div>
+<div class="h-full bg-error w-[35%]" title="Impulse"></div>
+</div>
+<div class="flex justify-between mt-2 font-label-caps text-[10px]">
+<span class="text-primary">65% PLANNED</span>
+<span class="text-error">35% IMPULSE</span>
+</div>
+</div>
+</div>
+<!-- Subscription Master List -->
+<div class="col-span-1 md:col-span-12">
+<div class="flex justify-between items-end mb-4">
+<h3 class="font-headline-md text-headline-md">Subscription Master List</h3>
+<p class="font-body-sm text-on-surface-variant">Annualized cost: <span class="font-bold text-primary">₹62,400</span></p>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Card 1 -->
+<div class="glass-card rounded-xl p-4 border-l-4 border-l-secondary">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-red-600 flex items-center justify-center text-white font-bold">N</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">more_vert</span>
+</div>
+<p class="font-title-sm text-title-sm">Netflix</p>
+<p class="font-data-mono text-data-mono text-on-surface-variant mb-4">₹649/mo</p>
+<div class="flex items-center justify-between pt-4 border-t border-outline-variant">
+<span class="font-label-caps text-[10px] text-secondary font-bold bg-secondary-container px-2 py-0.5 rounded">ACTIVE</span>
+<span class="font-body-sm text-on-surface-variant">High Usage</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="glass-card rounded-xl p-4 border-l-4 border-l-error">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-green-500 flex items-center justify-center text-white">
+<span class="material-symbols-outlined">podcasts</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">more_vert</span>
+</div>
+<p class="font-title-sm text-title-sm">Spotify</p>
+<p class="font-data-mono text-data-mono text-on-surface-variant mb-4">₹1,189/yr</p>
+<div class="flex items-center justify-between pt-4 border-t border-outline-variant">
+<span class="font-label-caps text-[10px] text-error font-bold bg-error-container px-2 py-0.5 rounded">UNDERUSED</span>
+<span class="font-body-sm text-on-surface-variant">Last used 24d ago</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="glass-card rounded-xl p-4 border-l-4 border-l-secondary">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">GPT</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">more_vert</span>
+</div>
+<p class="font-title-sm text-title-sm">ChatGPT Plus</p>
+<p class="font-data-mono text-data-mono text-on-surface-variant mb-4">₹1,650/mo</p>
+<div class="flex items-center justify-between pt-4 border-t border-outline-variant">
+<span class="font-label-caps text-[10px] text-secondary font-bold bg-secondary-container px-2 py-0.5 rounded">ACTIVE</span>
+<span class="font-body-sm text-on-surface-variant">Daily Usage</span>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="glass-card rounded-xl p-4 border-l-4 border-l-outline-variant">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-white">
+<span class="material-symbols-outlined">video_library</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">more_vert</span>
+</div>
+<p class="font-title-sm text-title-sm">Amazon Prime</p>
+<p class="font-data-mono text-data-mono text-on-surface-variant mb-4">₹1,499/yr</p>
+<div class="flex items-center justify-between pt-4 border-t border-outline-variant">
+<span class="font-label-caps text-[10px] text-on-surface-variant font-bold bg-surface-container px-2 py-0.5 rounded">RECURRING</span>
+<span class="font-body-sm text-on-surface-variant">Moderate</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Savings Projections -->
+<div class="col-span-1 md:col-span-12 glass-card rounded-xl p-6">
+<h3 class="font-headline-md text-headline-md mb-6">Savings Projections</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-end">
+<div>
+<p class="font-title-sm text-title-sm">Emergency Fund</p>
+<p class="font-body-sm text-on-surface-variant">Target: ₹10,00,000</p>
+</div>
+<div class="text-right">
+<p class="font-data-mono text-data-mono font-bold text-secondary">78% Complete</p>
+<p class="font-body-sm text-on-surface-variant">Est. Oct 2024</p>
+</div>
+</div>
+<div class="h-4 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[78%] relative">
+<div class="absolute inset-0 bg-white/20 animate-pulse"></div>
+</div>
+</div>
+<p class="font-body-sm text-on-secondary-fixed-variant bg-secondary-fixed/30 p-3 rounded-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">lightbulb</span>
+                                Your recent bonus can complete this goal 2 months early.
+                            </p>
+</div>
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-end">
+<div>
+<p class="font-title-sm text-title-sm">New Car (SUV)</p>
+<p class="font-body-sm text-on-surface-variant">Target: ₹25,00,000</p>
+</div>
+<div class="text-right">
+<p class="font-data-mono text-data-mono font-bold text-primary">32% Complete</p>
+<p class="font-body-sm text-on-surface-variant">Est. Mar 2026</p>
+</div>
+</div>
+<div class="h-4 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[32%]"></div>
+</div>
+<p class="font-body-sm text-on-primary-fixed-variant bg-primary-fixed/30 p-3 rounded-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">trending_up</span>
+                                Redirecting Spotify funds adds 0.5% yearly velocity.
+                            </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Predicted Component) -->
+<nav class="fixed bottom-0 w-full z-50 lg:hidden bg-surface-container-highest border-t border-outline-variant h-16 px-2 pb-safe flex justify-around items-center">
+<button class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-label-caps">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="font-label-caps text-label-caps">Ledger</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-90 duration-100">
+<span class="material-symbols-outlined">bolt</span>
+<span class="font-label-caps text-label-caps">AI</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">flag</span>
+<span class="font-label-caps text-label-caps">Goals</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">menu</span>
+<span class="font-label-caps text-label-caps">More</span>
+</button>
+</nav>
+<script>
+        // Simple interactivity for the query bar
+        const queryInput = document.querySelector('input[type="text"]');
+        queryInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const query = this.value;
+                this.value = '';
+                this.placeholder = 'Analyzing "' + query + '"...';
+                setTimeout(() => {
+                    this.placeholder = 'Ask FiscalFlow: "How much did I spend on Swiggy last quarter?"';
+                }, 3000);
+            }
+        });
+    </script>
+</body></html>

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Transaction Intelligence Hub - FiscalFlow</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-container": "#6cf8bb",
+                    "error-container": "#ffdad6",
+                    "tertiary-container": "#002f29",
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#bcc7de",
+                    "on-secondary-container": "#00714d",
+                    "on-tertiary-container": "#00a292",
+                    "on-surface": "#0b1c30",
+                    "surface": "#f8f9ff",
+                    "inverse-on-surface": "#eaf1ff",
+                    "tertiary": "#001815",
+                    "inverse-surface": "#213145",
+                    "on-primary-container": "#8590a6",
+                    "surface-container": "#e5eeff",
+                    "background": "#f8f9ff",
+                    "outline-variant": "#c5c6cd",
+                    "on-secondary-fixed-variant": "#005236",
+                    "surface-container-highest": "#d3e4fe",
+                    "primary-container": "#1e293b",
+                    "surface-container-high": "#dce9ff",
+                    "secondary-fixed": "#6ffbbe",
+                    "surface-dim": "#cbdbf5",
+                    "secondary": "#006c49",
+                    "secondary-fixed-dim": "#4edea3",
+                    "on-primary-fixed": "#111c2d",
+                    "surface-bright": "#f8f9ff",
+                    "primary-fixed": "#d8e3fb",
+                    "surface-variant": "#d3e4fe",
+                    "error": "#ba1a1a",
+                    "on-background": "#0b1c30",
+                    "tertiary-fixed-dim": "#4fdbc8",
+                    "on-tertiary-fixed": "#00201c",
+                    "on-tertiary-fixed-variant": "#005048",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed": "#71f8e4",
+                    "primary": "#091426",
+                    "on-primary-fixed-variant": "#3c475a",
+                    "on-secondary-fixed": "#002113",
+                    "surface-container-low": "#eff4ff",
+                    "outline": "#75777d",
+                    "on-error-container": "#93000a",
+                    "on-error": "#ffffff",
+                    "primary-fixed-dim": "#bcc7de",
+                    "surface-tint": "#545f73",
+                    "on-surface-variant": "#45474c",
+                    "surface-container-lowest": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "container-max": "1440px",
+                    "density-high": "8px",
+                    "density-medium": "16px",
+                    "unit": "4px",
+                    "margin-desktop": "32px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "display-lg-mobile": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "title-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "data-mono": ["Inter"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "display-lg-mobile": ["28px", {"lineHeight": "34px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "title-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "data-mono": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .zebra-table tr:nth-child(even) {
+            background-color: #F1F5F9;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        .intelligence-glow {
+            box-shadow: 0 0 15px rgba(108, 248, 187, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- SideNavBar (Desktop Persistent) -->
+<aside class="h-screen w-64 fixed left-0 top-0 hidden lg:flex flex-col bg-surface-container-lowest dark:bg-primary-container border-r border-outline-variant dark:border-outline z-50">
+<div class="flex flex-col h-full py-density-medium px-density-high">
+<div class="mb-8 px-4">
+<h1 class="font-display-lg text-display-lg text-primary dark:text-primary-fixed font-bold">FiscalFlow</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Wealth Intelligence</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-primary-fixed-variant hover:bg-surface-container-low dark:hover:bg-primary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary dark:text-primary-fixed-dim font-bold border-r-4 border-primary dark:border-primary-fixed-dim bg-surface-container-high dark:bg-tertiary-container" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-body-md text-body-md">Transactions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-primary-fixed-variant hover:bg-surface-container-low dark:hover:bg-primary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-body-md text-body-md">Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-primary-fixed-variant hover:bg-surface-container-low dark:hover:bg-primary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-body-md text-body-md">Financial Year</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-primary-fixed-variant hover:bg-surface-container-low dark:hover:bg-primary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">target</span>
+<span class="font-body-md text-body-md">Goals</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-primary-fixed-variant hover:bg-surface-container-low dark:hover:bg-primary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">subscriptions</span>
+<span class="font-body-md text-body-md">Subscriptions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-primary-fixed-variant hover:bg-surface-container-low dark:hover:bg-primary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">psychology</span>
+<span class="font-body-md text-body-md">AI Insights</span>
+</a>
+</nav>
+<div class="mt-auto space-y-1 border-t border-outline-variant pt-4">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-primary-fixed-variant hover:bg-surface-container-low dark:hover:bg-primary" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-primary-fixed-variant hover:bg-surface-container-low dark:hover:bg-primary" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-body-md text-body-md">Support</span>
+</a>
+<div class="p-4 mt-4 bg-primary text-white rounded-xl">
+<p class="font-label-caps text-label-caps mb-2">PRO PLAN</p>
+<button class="w-full py-2 bg-secondary text-on-secondary rounded-lg font-title-sm text-title-sm">Upgrade to Pro</button>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 w-full lg:pl-64 h-16 z-40 bg-surface dark:bg-primary border-b border-outline-variant dark:border-outline backdrop-blur-md bg-surface/80">
+<div class="flex justify-between items-center h-full px-margin-desktop">
+<h2 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed lg:hidden">FiscalFlow</h2>
+<div class="hidden md:flex gap-6 items-center">
+<span class="font-title-sm text-title-sm text-on-surface-variant">Net Worth: <span class="text-primary font-bold">₹1,24,50,000</span></span>
+<span class="font-title-sm text-title-sm text-on-surface-variant">Health Score: <span class="text-secondary font-bold">88/100</span></span>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="pl-10 pr-4 py-1.5 rounded-full border border-outline-variant bg-surface-container-low focus:outline-none focus:ring-1 focus:ring-primary w-64" placeholder="Search transactions..." type="text"/>
+</div>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="flex items-center gap-2 p-1 pl-3 bg-surface-container border border-outline-variant rounded-full hover:bg-surface-container-high transition-all">
+<span class="font-label-caps text-label-caps">Akash</span>
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-sm">account_circle</span>
+</div>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-24 lg:pb-8 lg:pl-72 lg:pr-8 px-margin-mobile">
+<div class="max-w-container-max mx-auto">
+<!-- Page Header & Action Bar -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+<div>
+<h1 class="font-display-lg text-display-lg text-primary mb-1">Transaction Intelligence Hub</h1>
+<p class="text-on-surface-variant font-body-md text-body-md">Reviewing 1,420 transactions processed by FiscalFlow AI.</p>
+</div>
+<div class="flex flex-wrap gap-2">
+<button class="flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-lg hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-body-md">upload_file</span>
+<span class="font-label-caps text-label-caps">Import Statement</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-lg hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-body-md">edit_square</span>
+<span class="font-label-caps text-label-caps">Bulk Edit</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition-all">
+<span class="material-symbols-outlined text-body-md">add</span>
+<span class="font-label-caps text-label-caps">Add Entry</span>
+</button>
+</div>
+</div>
+<!-- Intelligence Filter Bar -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 mb-6 flex flex-wrap gap-4 items-center">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined">filter_list</span>
+<span class="font-label-caps text-label-caps uppercase">Filters:</span>
+</div>
+<select class="px-3 py-2 bg-surface-container-low border border-outline-variant rounded-lg font-body-sm text-body-sm focus:ring-primary">
+<option>Last 30 Days</option>
+<option>Financial Year 2023-24</option>
+<option>Custom Range</option>
+</select>
+<select class="px-3 py-2 bg-surface-container-low border border-outline-variant rounded-lg font-body-sm text-body-sm focus:ring-primary">
+<option>All Accounts</option>
+<option>HDFC Bank (...1234)</option>
+<option>ICICI Bank (...5678)</option>
+<option>Zerodha Portfolio</option>
+</select>
+<select class="px-3 py-2 bg-surface-container-low border border-outline-variant rounded-lg font-body-sm text-body-sm focus:ring-primary">
+<option>Intelligence Type: All</option>
+<option>Expense</option>
+<option>Investment</option>
+<option>Savings</option>
+<option>Transfer</option>
+</select>
+<div class="flex-1"></div>
+<button class="text-primary font-bold text-body-sm hover:underline">Clear All</button>
+</div>
+<!-- Master Ledger Table -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
+<div class="overflow-x-auto custom-scrollbar">
+<table class="w-full text-left zebra-table border-collapse">
+<thead>
+<tr class="bg-surface-container text-on-surface-variant border-b border-outline-variant">
+<th class="px-6 py-4 font-label-caps text-label-caps">DATE</th>
+<th class="px-6 py-4 font-label-caps text-label-caps">DESCRIPTION</th>
+<th class="px-6 py-4 font-label-caps text-label-caps">AMOUNT</th>
+<th class="px-6 py-4 font-label-caps text-label-caps">CATEGORY</th>
+<th class="px-6 py-4 font-label-caps text-label-caps">ACCOUNT</th>
+<th class="px-6 py-4 font-label-caps text-label-caps">INTELLIGENCE LABEL</th>
+<th class="px-6 py-4 font-label-caps text-label-caps"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1: AI Predicted Expense -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-6 py-4 font-data-mono text-data-mono">24 Oct 2023</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md font-semibold text-primary">Swiggy Ltd.</span>
+<span class="material-symbols-outlined text-secondary text-sm" title="AI Categorized">psychology</span>
+</div>
+</td>
+<td class="px-6 py-4 font-data-mono text-data-mono text-error font-bold">₹ - 1,240.00</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-rose-100 text-rose-700 rounded-full font-label-caps text-label-caps">FOOD &amp; DINING</span>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">HDFC Bank</td>
+<td class="px-6 py-4">
+<span class="flex items-center gap-1.5 text-on-surface-variant font-body-sm text-body-sm">
+<span class="w-2 h-2 rounded-full bg-rose-500"></span> Expense
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-outline hover:text-primary">more_vert</button>
+</td>
+</tr>
+<!-- Row 2: Transfer Intelligence -->
+<tr class="bg-surface-container-low intelligence-glow">
+<td class="px-6 py-4 font-data-mono text-data-mono">23 Oct 2023</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md font-semibold text-primary">HDFC → ICICI</span>
+<span class="material-symbols-outlined text-secondary text-sm">sync_alt</span>
+</div>
+</td>
+<td class="px-6 py-4 font-data-mono text-data-mono text-primary font-bold">₹ 50,000.00</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full font-label-caps text-label-caps">SELF TRANSFER</span>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">HDFC to ICICI</td>
+<td class="px-6 py-4">
+<span class="flex items-center gap-1.5 text-indigo-700 font-bold font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-sm">verified</span> Transfer
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-outline hover:text-primary">more_vert</button>
+</td>
+</tr>
+<!-- Row 3: Investment Intelligence -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-6 py-4 font-data-mono text-data-mono">22 Oct 2023</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md font-semibold text-primary">Salary → Zerodha</span>
+<span class="material-symbols-outlined text-secondary text-sm">trending_up</span>
+</div>
+</td>
+<td class="px-6 py-4 font-data-mono text-data-mono text-primary font-bold">₹ 1,50,000.00</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-teal-100 text-teal-700 rounded-full font-label-caps text-label-caps">EQUITIES</span>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">Salary A/C</td>
+<td class="px-6 py-4">
+<span class="flex items-center gap-1.5 text-teal-700 font-bold font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-sm">auto_awesome</span> Investment
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-outline hover:text-primary">more_vert</button>
+</td>
+</tr>
+<!-- Row 4: Regular Expense -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-6 py-4 font-data-mono text-data-mono">21 Oct 2023</td>
+<td class="px-6 py-4">
+<span class="font-body-md text-body-md font-semibold text-primary">Apple Services</span>
+</td>
+<td class="px-6 py-4 font-data-mono text-data-mono text-error font-bold">₹ - 899.00</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full font-label-caps text-label-caps">SUBSCRIPTIONS</span>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">ICICI Card</td>
+<td class="px-6 py-4">
+<span class="flex items-center gap-1.5 text-on-surface-variant font-body-sm text-body-sm">
+<span class="w-2 h-2 rounded-full bg-rose-500"></span> Expense
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-outline hover:text-primary">more_vert</button>
+</td>
+</tr>
+<!-- Row 5: AI Predicted Merchant -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-6 py-4 font-data-mono text-data-mono">20 Oct 2023</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md font-semibold text-primary">Shell Petro Station</span>
+<span class="material-symbols-outlined text-secondary text-sm" title="AI Merchant Verified">psychology</span>
+</div>
+</td>
+<td class="px-6 py-4 font-data-mono text-data-mono text-error font-bold">₹ - 4,500.00</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full font-label-caps text-label-caps">FUEL</span>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">HDFC Bank</td>
+<td class="px-6 py-4">
+<span class="flex items-center gap-1.5 text-on-surface-variant font-body-sm text-body-sm">
+<span class="w-2 h-2 rounded-full bg-rose-500"></span> Expense
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-outline hover:text-primary">more_vert</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="p-4 border-t border-outline-variant flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Showing 1-10 of 1,420 transactions</span>
+<div class="flex gap-2">
+<button class="p-2 border border-outline-variant rounded-lg hover:bg-surface-container-low disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="px-4 py-2 bg-primary text-white rounded-lg font-body-sm text-body-sm">1</button>
+<button class="px-4 py-2 border border-outline-variant rounded-lg font-body-sm text-body-sm hover:bg-surface-container-low">2</button>
+<button class="px-4 py-2 border border-outline-variant rounded-lg font-body-sm text-body-sm hover:bg-surface-container-low">3</button>
+<button class="p-2 border border-outline-variant rounded-lg hover:bg-surface-container-low">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Intelligence Stats Cards (Bento) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+<div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-title-sm text-title-sm text-primary">Categorization Accuracy</h3>
+<span class="material-symbols-outlined text-secondary">verified</span>
+</div>
+<p class="font-display-lg text-display-lg text-primary">94.2%</p>
+<p class="text-on-surface-variant text-body-sm mt-2">AI successfully predicted 1,338 categories this month.</p>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-title-sm text-title-sm text-primary">Identified Transfers</h3>
+<span class="material-symbols-outlined text-indigo-600">sync_alt</span>
+</div>
+<p class="font-display-lg text-display-lg text-primary">₹ 4.2L</p>
+<p class="text-on-surface-variant text-body-sm mt-2">12 transactions identified as internal transfers (excluded from expense).</p>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-title-sm text-title-sm text-primary">Investment Yield</h3>
+<span class="material-symbols-outlined text-teal-600">trending_up</span>
+</div>
+<p class="font-display-lg text-display-lg text-primary">+₹ 12.4K</p>
+<p class="text-on-surface-variant text-body-sm mt-2">Real-time valuation of intelligent investment labels.</p>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 w-full z-50 lg:hidden bg-surface-container-highest border-t border-outline-variant shadow-lg h-16 px-2 pb-safe flex justify-around items-center">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-label-caps mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="font-label-caps text-label-caps">Ledger</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">bolt</span>
+<span class="font-label-caps text-label-caps mt-1">AI</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">flag</span>
+<span class="font-label-caps text-label-caps mt-1">Goals</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">menu</span>
+<span class="font-label-caps text-label-caps mt-1">More</span>
+</a>
+</nav>
+<script>
+        // Simple Micro-interaction for table rows
+        document.querySelectorAll('tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.style.transform = 'translateX(4px)';
+                row.style.transition = 'transform 0.2s ease-out';
+            });
+            row.addEventListener('mouseleave', () => {
+                row.style.transform = 'translateX(0)';
+            });
+        });
+    </script>
+</body></html>

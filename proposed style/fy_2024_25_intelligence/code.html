@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FiscalFlow | Financial Year &amp; Tax Analytics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#6cf8bb",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#002f29",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#bcc7de",
+                        "on-secondary-container": "#00714d",
+                        "on-tertiary-container": "#00a292",
+                        "on-surface": "#0b1c30",
+                        "surface": "#f8f9ff",
+                        "inverse-on-surface": "#eaf1ff",
+                        "tertiary": "#001815",
+                        "inverse-surface": "#213145",
+                        "on-primary-container": "#8590a6",
+                        "surface-container": "#e5eeff",
+                        "background": "#f8f9ff",
+                        "outline-variant": "#c5c6cd",
+                        "on-secondary-fixed-variant": "#005236",
+                        "surface-container-highest": "#d3e4fe",
+                        "primary-container": "#1e293b",
+                        "surface-container-high": "#dce9ff",
+                        "secondary-fixed": "#6ffbbe",
+                        "surface-dim": "#cbdbf5",
+                        "secondary": "#006c49",
+                        "secondary-fixed-dim": "#4edea3",
+                        "on-primary-fixed": "#111c2d",
+                        "surface-bright": "#f8f9ff",
+                        "primary-fixed": "#d8e3fb",
+                        "surface-variant": "#d3e4fe",
+                        "error": "#ba1a1a",
+                        "on-background": "#0b1c30",
+                        "tertiary-fixed-dim": "#4fdbc8",
+                        "on-tertiary-fixed": "#00201c",
+                        "on-tertiary-fixed-variant": "#005048",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#71f8e4",
+                        "primary": "#091426",
+                        "on-primary-fixed-variant": "#3c475a",
+                        "on-secondary-fixed": "#002113",
+                        "surface-container-low": "#eff4ff",
+                        "outline": "#75777d",
+                        "on-error-container": "#93000a",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#bcc7de",
+                        "surface-tint": "#545f73",
+                        "on-surface-variant": "#45474c",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "container-max": "1440px",
+                        "density-high": "8px",
+                        "density-medium": "16px",
+                        "unit": "4px",
+                        "margin-desktop": "32px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "data-mono": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "title-sm": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "data-mono": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #f8f9ff; font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .bento-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 24px; }
+        .glass-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body class="text-on-surface">
+<!-- Side Navigation Shell -->
+<nav class="h-screen w-64 fixed left-0 top-0 hidden lg:flex flex-col bg-surface-container-lowest border-r border-outline-variant py-density-medium px-density-high z-50">
+<div class="mb-10 px-4">
+<h1 class="font-display-lg text-display-lg text-primary font-bold">FiscalFlow</h1>
+<p class="font-body-sm text-on-surface-variant">Wealth Intelligence</p>
+</div>
+<div class="flex flex-col gap-1 flex-grow">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-body-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-body-md">Transactions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-body-md">Analytics</span>
+</a>
+<!-- Active State: Financial Year -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary font-bold border-r-4 border-primary bg-surface-container-high" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-body-md">Financial Year</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="target">target</span>
+<span class="font-body-md">Goals</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="subscriptions">subscriptions</span>
+<span class="font-body-md">Subscriptions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span class="font-body-md">AI Insights</span>
+</a>
+</div>
+<div class="mt-auto pt-6 border-t border-outline-variant flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-md">Settings</span>
+</a>
+<div class="mt-4 p-4 bg-primary text-on-primary rounded-xl">
+<p class="font-label-caps text-xs opacity-80 mb-2">PRO PLAN</p>
+<p class="font-title-sm mb-3 text-sm">Unlock tax advisory</p>
+<button class="w-full py-2 bg-secondary-container text-on-secondary-container font-bold text-xs rounded-md">Upgrade to Pro</button>
+</div>
+</div>
+</nav>
+<!-- Top App Bar -->
+<header class="fixed top-0 right-0 w-full lg:pl-64 h-16 z-40 bg-surface/80 backdrop-blur-md border-b border-outline-variant">
+<div class="flex justify-between items-center h-full px-margin-desktop">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4">
+<span class="font-title-sm text-primary font-bold">Net Worth: ₹1,24,50,000</span>
+<span class="h-4 w-[1px] bg-outline-variant"></span>
+<span class="font-title-sm text-secondary font-bold">Health Score: 88/100</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="flex items-center gap-3 pl-2">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant">
+<img alt="User Profile Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBW77qlR4BKwlNU0cdUCiZIIGxTU1QINGtckl3k26lsnHtUqmzY6miMXjNSW31jFC85awSalNSLS-TAeJDU5vR1GbATwK2c0GtRVcuUZtM-WolWhviPYF86-w6tlikQd1LxopE3vCtfZy5KaaqaUnRcwDJhEcCrAqXRtuMXrUCRRlp9rjSOg8CEQUt1M51yMCKwX5LV4vpSesM0lCv0JQyTaGEno-VQBLvqZQnziCgKMbNci2gQfigWOlzwuqrGbi91ifbF2iMEFg"/>
+</div>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="lg:ml-64 pt-16 pb-24 lg:pb-12 min-h-screen">
+<div class="max-w-[1440px] mx-auto p-margin-desktop">
+<!-- Page Header & FY Selector -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6">
+<div>
+<h2 class="font-display-lg text-display-lg text-primary mb-1">Financial Year Analytics</h2>
+<p class="font-body-md text-on-surface-variant">Real-time tax liability and deduction tracking for the Indian Fiscal Cycle.</p>
+</div>
+<div class="flex bg-surface-container-low p-1 rounded-lg border border-outline-variant">
+<button class="px-6 py-2 bg-primary text-on-primary font-bold rounded-md shadow-sm transition-all">FY 2024-25</button>
+<button class="px-6 py-2 text-on-surface-variant font-medium hover:bg-surface-container-high rounded-md transition-all">FY 2023-24</button>
+</div>
+</div>
+<!-- Dashboard Grid -->
+<div class="bento-grid">
+<!-- Tax Ready Summary Card (Large) -->
+<div class="col-span-12 lg:col-span-8 glass-card rounded-xl p-8 border border-outline-variant shadow-sm relative overflow-hidden">
+<div class="absolute top-0 right-0 p-8 opacity-10">
+<span class="material-symbols-outlined text-[120px]" data-icon="account_balance_wallet">account_balance_wallet</span>
+</div>
+<div class="relative z-10">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="fact_check">fact_check</span>
+<h3 class="font-headline-md text-headline-md text-primary">Tax Ready Summary</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="p-6 bg-surface-container rounded-xl border border-outline-variant">
+<p class="font-label-caps text-on-surface-variant mb-2">TOTAL INCOME (EST.)</p>
+<p class="font-display-lg text-2xl text-primary font-bold">₹42,50,000</p>
+<div class="mt-4 flex items-center gap-1 text-secondary font-bold text-xs">
+<span class="material-symbols-outlined text-sm" data-icon="trending_up">trending_up</span>
+<span>+12% vs LY</span>
+</div>
+</div>
+<div class="p-6 bg-surface-container-lowest rounded-xl border border-outline-variant">
+<p class="font-label-caps text-on-surface-variant mb-2">TAXABLE COMPONENTS</p>
+<p class="font-display-lg text-2xl text-primary font-bold">₹36,80,000</p>
+<p class="mt-4 text-xs text-on-surface-variant">Excludes standard deductions</p>
+</div>
+<div class="p-6 bg-tertiary-container rounded-xl border border-tertiary text-on-tertiary-fixed">
+<p class="font-label-caps text-on-tertiary-container mb-2">TAX SAVINGS REMAINING</p>
+<p class="font-display-lg text-2xl text-on-tertiary-fixed font-bold">₹75,000</p>
+<div class="mt-4 flex items-center gap-2">
+<div class="flex-grow bg-on-tertiary-container/20 h-2 rounded-full overflow-hidden">
+<div class="bg-secondary-fixed w-2/3 h-full"></div>
+</div>
+<span class="text-xs font-bold">66%</span>
+</div>
+</div>
+</div>
+<div class="mt-8 pt-8 border-t border-outline-variant">
+<h4 class="font-title-sm text-primary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="lightbulb">lightbulb</span>
+                                Smart Tax Recommendations
+                            </h4>
+<div class="flex flex-wrap gap-3">
+<div class="px-4 py-2 bg-surface-container-high rounded-full border border-outline-variant text-sm flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+                                    Invest ₹45,000 more in <span class="font-bold">80C</span> to cap deduction.
+                                </div>
+<div class="px-4 py-2 bg-surface-container-high rounded-full border border-outline-variant text-sm flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+                                    NPS (80CCD) contribution pending: <span class="font-bold">₹30,000</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Export Section (Small) -->
+<div class="col-span-12 lg:col-span-4 bg-primary text-on-primary rounded-xl p-8 flex flex-col justify-between border border-primary-container shadow-lg">
+<div>
+<h3 class="font-headline-md text-headline-md mb-2">Compliance Ready?</h3>
+<p class="text-on-primary-container font-body-sm mb-6">Generate your tax-ready statement inclusive of capital gains, dividends, and deductible investments.</p>
+<ul class="space-y-4 mb-8">
+<li class="flex items-center gap-3 text-sm">
+<span class="material-symbols-outlined text-secondary-fixed" data-icon="check_circle">check_circle</span>
+                                Capital Gains (Short &amp; Long Term)
+                            </li>
+<li class="flex items-center gap-3 text-sm">
+<span class="material-symbols-outlined text-secondary-fixed" data-icon="check_circle">check_circle</span>
+                                Section 80C/80D Proofs
+                            </li>
+<li class="flex items-center gap-3 text-sm">
+<span class="material-symbols-outlined text-secondary-fixed" data-icon="check_circle">check_circle</span>
+                                Income from Other Sources
+                            </li>
+</ul>
+</div>
+<button class="w-full py-4 bg-secondary-container text-on-secondary-container font-bold rounded-lg flex items-center justify-center gap-3 hover:scale-[1.02] transition-transform">
+<span class="material-symbols-outlined" data-icon="download">download</span>
+                        Download Tax-Ready Report
+                    </button>
+</div>
+<!-- Quarterly Progress Section -->
+<div class="col-span-12">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline-md text-headline-md text-primary">Quarterly Progress</h3>
+<span class="text-sm font-medium text-on-surface-variant">FY 2024 Cycle: Apr 1 - Mar 31</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+<!-- Q1 -->
+<div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl hover:border-primary transition-colors">
+<div class="flex justify-between items-start mb-4">
+<span class="px-3 py-1 bg-surface-container-high rounded-md text-xs font-bold text-primary">Q1 (Apr-Jun)</span>
+<span class="material-symbols-outlined text-secondary" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div class="space-y-4">
+<div>
+<p class="text-xs text-on-surface-variant font-label-caps">INCOME</p>
+<p class="font-title-sm text-primary font-bold">₹10,25,000</p>
+</div>
+<div>
+<p class="text-xs text-on-surface-variant font-label-caps">INVESTED (80C/D)</p>
+<p class="font-title-sm text-secondary font-bold">₹45,000</p>
+</div>
+</div>
+</div>
+<!-- Q2 -->
+<div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl hover:border-primary transition-colors">
+<div class="flex justify-between items-start mb-4">
+<span class="px-3 py-1 bg-surface-container-high rounded-md text-xs font-bold text-primary">Q2 (Jul-Sep)</span>
+<span class="material-symbols-outlined text-secondary" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div class="space-y-4">
+<div>
+<p class="text-xs text-on-surface-variant font-label-caps">INCOME</p>
+<p class="font-title-sm text-primary font-bold">₹10,50,000</p>
+</div>
+<div>
+<p class="text-xs text-on-surface-variant font-label-caps">INVESTED (80C/D)</p>
+<p class="font-title-sm text-secondary font-bold">₹62,000</p>
+</div>
+</div>
+</div>
+<!-- Q3 -->
+<div class="bg-surface-container-high border-2 border-primary/20 p-6 rounded-xl relative overflow-hidden">
+<div class="absolute top-0 right-0 p-2">
+<span class="px-2 py-0.5 bg-primary text-on-primary text-[10px] font-bold rounded">ACTIVE</span>
+</div>
+<div class="flex justify-between items-start mb-4">
+<span class="px-3 py-1 bg-primary text-on-primary rounded-md text-xs font-bold">Q3 (Oct-Dec)</span>
+</div>
+<div class="space-y-4">
+<div>
+<p class="text-xs text-on-surface-variant font-label-caps">INCOME TO DATE</p>
+<p class="font-title-sm text-primary font-bold">₹6,80,000</p>
+</div>
+<div>
+<p class="text-xs text-on-surface-variant font-label-caps">INVESTED (80C/D)</p>
+<p class="font-title-sm text-secondary font-bold">₹12,000</p>
+<div class="mt-2 w-full bg-outline-variant/30 h-1.5 rounded-full">
+<div class="bg-primary w-1/4 h-full rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Q4 -->
+<div class="bg-surface-dim/20 border border-outline-variant border-dashed p-6 rounded-xl opacity-60">
+<div class="flex justify-between items-start mb-4">
+<span class="px-3 py-1 bg-surface-container-high rounded-md text-xs font-bold text-on-surface-variant">Q4 (Jan-Mar)</span>
+</div>
+<div class="flex flex-col items-center justify-center h-24 text-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="lock_clock">lock_clock</span>
+<p class="text-xs mt-2 font-medium">Projection available in Dec</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Investment Portfolio Snapshot (Bento Grid Style) -->
+<div class="col-span-12 lg:col-span-12">
+<h3 class="font-headline-md text-headline-md text-primary mb-6">Tax-Saving Portfolio Snapshot</h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- PPF -->
+<div class="p-6 bg-surface-container-lowest border border-outline-variant rounded-xl flex flex-col justify-between">
+<div class="flex items-center gap-4 mb-6">
+<div class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="savings">savings</span>
+</div>
+<div>
+<h4 class="font-title-sm font-bold">PPF</h4>
+<p class="text-xs text-on-surface-variant">Public Provident Fund</p>
+</div>
+</div>
+<div class="flex items-end justify-between">
+<div>
+<p class="text-xs font-label-caps text-on-surface-variant">TOTAL VALUE</p>
+<p class="font-display-lg text-2xl font-bold">₹18,45,200</p>
+</div>
+<div class="text-right">
+<span class="text-secondary font-bold text-sm">+7.1% p.a.</span>
+<p class="text-[10px] text-on-surface-variant">Current FY: ₹1,50,000 (Maxed)</p>
+</div>
+</div>
+</div>
+<!-- NPS -->
+<div class="p-6 bg-surface-container-lowest border border-outline-variant rounded-xl flex flex-col justify-between">
+<div class="flex items-center gap-4 mb-6">
+<div class="w-12 h-12 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+</div>
+<div>
+<h4 class="font-title-sm font-bold">NPS</h4>
+<p class="text-xs text-on-surface-variant">National Pension Scheme</p>
+</div>
+</div>
+<div class="flex items-end justify-between">
+<div>
+<p class="text-xs font-label-caps text-on-surface-variant">TOTAL VALUE</p>
+<p class="font-display-lg text-2xl font-bold">₹8,12,000</p>
+</div>
+<div class="text-right">
+<span class="text-secondary font-bold text-sm">+11.4% CAGR</span>
+<p class="text-[10px] text-on-surface-variant">Tier-1 Active</p>
+</div>
+</div>
+</div>
+<!-- ELSS -->
+<div class="p-6 bg-surface-container-lowest border border-outline-variant rounded-xl flex flex-col justify-between">
+<div class="flex items-center gap-4 mb-6">
+<div class="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="show_chart">show_chart</span>
+</div>
+<div>
+<h4 class="font-title-sm font-bold">ELSS</h4>
+<p class="text-xs text-on-surface-variant">Equity Linked Savings</p>
+</div>
+</div>
+<div class="flex items-end justify-between">
+<div>
+<p class="text-xs font-label-caps text-on-surface-variant">TOTAL VALUE</p>
+<p class="font-display-lg text-2xl font-bold">₹12,88,500</p>
+</div>
+<div class="text-right">
+<span class="text-secondary font-bold text-sm">+18.2% YTD</span>
+<p class="text-[10px] text-on-surface-variant">Locked: ₹2,40,000</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile only) -->
+<nav class="fixed bottom-0 w-full z-50 lg:hidden bg-surface-container-highest border-t border-outline-variant flex justify-around items-center h-16 px-2 pb-safe shadow-lg">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-caps text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="font-label-caps text-[10px]">Ledger</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-label-caps text-[10px]">FY</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="flag">flag</span>
+<span class="font-label-caps text-[10px]">Goals</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+<span class="font-label-caps text-[10px]">More</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions for interactive cards
+        document.querySelectorAll('.hover-scale').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-4px)';
+                card.style.transition = 'all 0.3s ease';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0px)';
+            });
+        });
+    </script>
+</body></html>

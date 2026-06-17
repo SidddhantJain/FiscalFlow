@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FiscalFlow - Financial Command Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-container": "#6cf8bb",
+                    "error-container": "#ffdad6",
+                    "tertiary-container": "#002f29",
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#bcc7de",
+                    "on-secondary-container": "#00714d",
+                    "on-tertiary-container": "#00a292",
+                    "on-surface": "#0b1c30",
+                    "surface": "#f8f9ff",
+                    "inverse-on-surface": "#eaf1ff",
+                    "tertiary": "#001815",
+                    "inverse-surface": "#213145",
+                    "on-primary-container": "#8590a6",
+                    "surface-container": "#e5eeff",
+                    "background": "#f8f9ff",
+                    "outline-variant": "#c5c6cd",
+                    "on-secondary-fixed-variant": "#005236",
+                    "surface-container-highest": "#d3e4fe",
+                    "primary-container": "#1e293b",
+                    "surface-container-high": "#dce9ff",
+                    "secondary-fixed": "#6ffbbe",
+                    "surface-dim": "#cbdbf5",
+                    "secondary": "#006c49",
+                    "secondary-fixed-dim": "#4edea3",
+                    "on-primary-fixed": "#111c2d",
+                    "surface-bright": "#f8f9ff",
+                    "primary-fixed": "#d8e3fb",
+                    "surface-variant": "#d3e4fe",
+                    "error": "#ba1a1a",
+                    "on-background": "#0b1c30",
+                    "tertiary-fixed-dim": "#4fdbc8",
+                    "on-tertiary-fixed": "#00201c",
+                    "on-tertiary-fixed-variant": "#005048",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed": "#71f8e4",
+                    "primary": "#091426",
+                    "on-primary-fixed-variant": "#3c475a",
+                    "on-secondary-fixed": "#002113",
+                    "surface-container-low": "#eff4ff",
+                    "outline": "#75777d",
+                    "on-error-container": "#93000a",
+                    "on-error": "#ffffff",
+                    "primary-fixed-dim": "#bcc7de",
+                    "surface-tint": "#545f73",
+                    "on-surface-variant": "#45474c",
+                    "surface-container-lowest": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "container-max": "1440px",
+                    "density-high": "8px",
+                    "density-medium": "16px",
+                    "unit": "4px",
+                    "margin-desktop": "32px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "display-lg-mobile": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "title-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "data-mono": ["Inter"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "display-lg-mobile": ["28px", {"lineHeight": "34px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "title-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "data-mono": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .data-zebra-row:nth-child(even) {
+            background-color: #f1f5f9;
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md">
+<!-- Side Navigation Shell -->
+<aside class="h-screen w-64 fixed left-0 top-0 hidden lg:flex flex-col bg-surface-container-lowest border-r border-outline-variant z-50 py-density-medium px-density-high">
+<div class="mb-10 px-4">
+<h1 class="font-display-lg text-display-lg text-primary font-bold">FiscalFlow</h1>
+<p class="text-body-sm text-on-surface-variant">Wealth Intelligence</p>
+</div>
+<nav class="flex-grow space-y-1">
+<!-- Active Tab: Dashboard -->
+<a class="flex items-center gap-3 px-4 py-3 text-primary font-bold border-r-4 border-primary bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-body-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-body-md">Transactions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-body-md">Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-body-md">Financial Year</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="target">target</span>
+<span class="font-body-md">Goals</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="subscriptions">subscriptions</span>
+<span class="font-body-md">Subscriptions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span class="font-body-md">AI Insights</span>
+</a>
+</nav>
+<div class="mt-auto border-t border-outline-variant pt-6 px-4">
+<button class="w-full py-2 bg-primary text-on-primary rounded-lg font-bold text-body-sm mb-6 transition-all active:scale-95">Upgrade to Pro</button>
+<div class="space-y-1">
+<a class="flex items-center gap-3 py-2 text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-md">Settings</span>
+</a>
+<a class="flex items-center gap-3 py-2 text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-body-md">Support</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Top AppBar Shell -->
+<header class="fixed top-0 right-0 w-full lg:pl-64 h-16 z-40 bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center px-margin-desktop">
+<div class="flex gap-6 items-center">
+<span class="font-title-sm text-primary font-bold">Net Worth: ₹1,24,50,000</span>
+<span class="w-px h-4 bg-outline-variant"></span>
+<span class="font-title-sm text-primary font-bold">Health Score: 88/100</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative hidden md:block">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface-container-low border border-outline-variant rounded-full text-body-sm focus:outline-none focus:border-primary w-64" placeholder="Search analytics..." type="text"/>
+</div>
+<div class="flex gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors active:scale-95" data-icon="notifications">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors active:scale-95" data-icon="account_circle">account_circle</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="lg:pl-64 pt-16 min-h-screen pb-20 lg:pb-8">
+<div class="max-w-container-max mx-auto p-margin-desktop">
+<div class="bento-grid">
+<!-- Hero Section: Net Worth -->
+<section class="col-span-12 lg:col-span-8 glass-card rounded-xl p-8 flex flex-col justify-between overflow-hidden relative group">
+<div class="absolute -right-16 -top-16 w-64 h-64 bg-secondary-container/10 rounded-full blur-3xl group-hover:bg-secondary-container/20 transition-all duration-500"></div>
+<div>
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-caps text-on-surface-variant">TOTAL NET WORTH</span>
+<span class="flex items-center gap-1 text-secondary font-bold text-body-sm">
+<span class="material-symbols-outlined text-sm" data-icon="trending_up">trending_up</span>
+                                +2.4% (24h)
+                            </span>
+</div>
+<h2 class="font-display-lg text-display-lg text-primary tracking-tighter">₹1,24,50,000</h2>
+</div>
+<div class="mt-12 h-40 w-full relative">
+<!-- Simplified SVG Chart Representation -->
+<svg class="w-full h-full" viewbox="0 0 800 200">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="var(--secondary)" stop-opacity="0.1"></stop>
+<stop offset="100%" stop-color="var(--secondary)" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0 180 Q 100 160 200 170 T 400 140 T 600 100 T 800 80" fill="none" stroke="#006c49" stroke-linecap="round" stroke-width="3"></path>
+<path d="M0 180 Q 100 160 200 170 T 400 140 T 600 100 T 800 80 V 200 H 0 Z" fill="url(#chartGradient)"></path>
+<!-- Grid lines -->
+<line stroke="#f1f5f9" stroke-dasharray="4" x1="0" x2="800" y1="50" y2="50"></line>
+<line stroke="#f1f5f9" stroke-dasharray="4" x1="0" x2="800" y1="100" y2="100"></line>
+<line stroke="#f1f5f9" stroke-dasharray="4" x1="0" x2="800" y1="150" y2="150"></line>
+</svg>
+<div class="flex justify-between mt-4 text-body-sm text-on-surface-variant font-label-caps">
+<span>JUN 23</span>
+<span>SEP 23</span>
+<span>DEC 23</span>
+<span>MAR 24</span>
+<span>JUN 24</span>
+</div>
+</div>
+</section>
+<!-- Health Score Widget -->
+<section class="col-span-12 lg:col-span-4 glass-card rounded-xl p-8 flex flex-col items-center justify-center text-center">
+<span class="font-label-caps text-on-surface-variant mb-6">FINANCIAL HEALTH SCORE</span>
+<div class="relative w-48 h-48 flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90">
+<circle cx="96" cy="96" fill="transparent" r="88" stroke="#e2e8f0" stroke-width="12"></circle>
+<circle cx="96" cy="96" fill="transparent" r="88" stroke="#006c49" stroke-dasharray="552.9" stroke-dashoffset="66" stroke-linecap="round" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-display-lg text-display-lg text-primary">88</span>
+<span class="text-secondary font-bold text-body-sm">Great</span>
+</div>
+</div>
+<div class="mt-8 grid grid-cols-2 gap-8 w-full">
+<div class="text-left">
+<p class="text-body-sm text-on-surface-variant">Savings Rate</p>
+<p class="font-title-sm text-primary">28%</p>
+</div>
+<div class="text-left">
+<p class="text-body-sm text-on-surface-variant">Emergency Fund</p>
+<p class="font-title-sm text-primary">6.2 mo</p>
+</div>
+</div>
+</section>
+<!-- Account Summary Grid -->
+<div class="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Card 1 -->
+<div class="glass-card rounded-lg p-6 group hover:border-primary transition-all duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="account_balance">account_balance</span>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors cursor-pointer" data-icon="more_vert">more_vert</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">HDFC Savings</p>
+<p class="font-title-sm text-primary font-bold mt-1">₹12,42,000</p>
+</div>
+<!-- Card 2 -->
+<div class="glass-card rounded-lg p-6 group hover:border-primary transition-all duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="payments">payments</span>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors cursor-pointer" data-icon="more_vert">more_vert</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">ICICI Salary</p>
+<p class="font-title-sm text-primary font-bold mt-1">₹4,15,500</p>
+</div>
+<!-- Card 3 -->
+<div class="glass-card rounded-lg p-6 group hover:border-primary transition-all duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="show_chart">show_chart</span>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors cursor-pointer" data-icon="more_vert">more_vert</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">Zerodha Stocks</p>
+<p class="font-title-sm text-primary font-bold mt-1">₹98,75,000</p>
+</div>
+<!-- Card 4 -->
+<div class="glass-card rounded-lg p-6 group hover:border-primary transition-all duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="token">token</span>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors cursor-pointer" data-icon="more_vert">more_vert</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">Gold Holdings</p>
+<p class="font-title-sm text-primary font-bold mt-1">₹9,17,500</p>
+</div>
+</div>
+<!-- Recent Intelligence Feed -->
+<section class="col-span-12 lg:col-span-7 glass-card rounded-xl overflow-hidden">
+<div class="p-6 border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
+<h3 class="font-title-sm text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="psychology">psychology</span>
+                            Recent Intelligence
+                        </h3>
+<button class="text-primary font-bold text-body-sm hover:underline">View All</button>
+</div>
+<div class="divide-y divide-outline-variant">
+<div class="p-4 flex gap-4 items-start hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="mt-1 w-2 h-2 rounded-full bg-secondary"></div>
+<div>
+<p class="text-body-md text-primary">SIP for June processed successfully.</p>
+<p class="text-body-sm text-on-surface-variant">6 hours ago • Investments</p>
+</div>
+</div>
+<div class="p-4 flex gap-4 items-start hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="mt-1 w-2 h-2 rounded-full bg-error"></div>
+<div>
+<p class="text-body-md text-primary">Swiggy spending is up 15% compared to last month.</p>
+<p class="text-body-sm text-on-surface-variant">Yesterday • Spending Alert</p>
+</div>
+</div>
+<div class="p-4 flex gap-4 items-start hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="mt-1 w-2 h-2 rounded-full bg-primary"></div>
+<div>
+<p class="text-body-md text-primary">Potential unused subscription detected: Disney+ Hotstar.</p>
+<p class="text-body-sm text-on-surface-variant">2 days ago • Optimization</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Cashflow Overview -->
+<section class="col-span-12 lg:col-span-5 glass-card rounded-xl p-6">
+<div class="flex justify-between items-center mb-8">
+<h3 class="font-title-sm text-primary">Cashflow Overview</h3>
+<div class="flex gap-4">
+<span class="flex items-center gap-1 text-label-caps text-on-surface-variant">
+<span class="w-3 h-3 bg-primary rounded-sm"></span> Inc
+                            </span>
+<span class="flex items-center gap-1 text-label-caps text-on-surface-variant">
+<span class="w-3 h-3 bg-error rounded-sm"></span> Exp
+                            </span>
+<span class="flex items-center gap-1 text-label-caps text-on-surface-variant">
+<span class="w-3 h-3 bg-secondary rounded-sm"></span> Sav
+                            </span>
+</div>
+</div>
+<div class="flex items-end justify-between h-56 px-4">
+<!-- Bar Groups -->
+<div class="flex flex-col items-center gap-2 flex-1">
+<div class="flex items-end gap-1 w-full justify-center">
+<div class="w-4 bg-primary h-40 rounded-t-sm"></div>
+<div class="w-4 bg-error h-24 rounded-t-sm"></div>
+<div class="w-4 bg-secondary h-16 rounded-t-sm"></div>
+</div>
+<span class="font-label-caps text-on-surface-variant">APR</span>
+</div>
+<div class="flex flex-col items-center gap-2 flex-1">
+<div class="flex items-end gap-1 w-full justify-center">
+<div class="w-4 bg-primary h-44 rounded-t-sm"></div>
+<div class="w-4 bg-error h-28 rounded-t-sm"></div>
+<div class="w-4 bg-secondary h-16 rounded-t-sm"></div>
+</div>
+<span class="font-label-caps text-on-surface-variant">MAY</span>
+</div>
+<div class="flex flex-col items-center gap-2 flex-1">
+<div class="flex items-end gap-1 w-full justify-center">
+<div class="w-4 bg-primary h-48 rounded-t-sm"></div>
+<div class="w-4 bg-error h-20 rounded-t-sm"></div>
+<div class="w-4 bg-secondary h-28 rounded-t-sm"></div>
+</div>
+<span class="font-label-caps text-primary font-bold">JUN</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Shell (Mobile Only) -->
+<nav class="fixed bottom-0 w-full z-50 lg:hidden bg-surface-container-highest border-t border-outline-variant flex justify-around items-center h-16 px-2 pb-safe shadow-lg">
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-90 duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-caps">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="font-label-caps">Ledger</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="bolt">bolt</span>
+<span class="font-label-caps">AI</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="flag">flag</span>
+<span class="font-label-caps">Goals</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+<span class="font-label-caps">More</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction for account cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.borderColor = 'var(--primary)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.borderColor = '#e2e8f0';
+            });
+        });
+
+        // Add Rupee symbol handling for any input fields if they existed (System mandated prefix)
+        // Here we just ensure all amounts have it.
+    </script>
+</body></html>
