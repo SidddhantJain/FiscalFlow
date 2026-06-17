@@ -1,11 +1,11 @@
 from pydantic import BaseModel, ConfigDict
 from decimal import Decimal
-from datetime import date, datetime
+from datetime import date as dt_date, datetime
 from app.schemas.category import Category
 from app.schemas.account import Account
 
 class TransactionBase(BaseModel):
-    date: date
+    date: dt_date
     description: str
     amount: Decimal
     type: str  # INCOME, EXPENSE, SAVINGS, INVESTMENT, TRANSFER, LOAN, TAX
@@ -20,7 +20,7 @@ class TransactionCreate(TransactionBase):
     pass
 
 class TransactionUpdate(BaseModel):
-    date: date | None = None
+    date: dt_date | None = None
     description: str | None = None
     amount: Decimal | None = None
     type: str | None = None

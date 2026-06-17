@@ -22,7 +22,7 @@ def test_transaction_creation_and_balance_adjustment(client):
     
     # Check account current balance increased
     acc_check = client.get(f"/accounts/{account_id}")
-    assert acc_check.json()["current_balance"] == 35000.00 # 10000 + 25000
+    assert float(acc_check.json()["current_balance"]) == 35000.00 # 10000 + 25000
     
     # 3. Add an Expense transaction
     exp_res = client.post("/transactions/", json={
@@ -36,13 +36,13 @@ def test_transaction_creation_and_balance_adjustment(client):
     
     # Check account current balance decreased
     acc_check = client.get(f"/accounts/{account_id}")
-    assert acc_check.json()["current_balance"] == 33500.00 # 35000 - 1500
+    assert float(acc_check.json()["current_balance"]) == 33500.00 # 35000 - 1500
     
     # 4. Delete expense transaction and verify balance reverted
     tx_id = exp_res.json()["id"]
     client.delete(f"/transactions/{tx_id}")
     acc_check = client.get(f"/accounts/{account_id}")
-    assert acc_check.json()["current_balance"] == 35000.00 # Reverted to 35000.00
+    assert float(acc_check.json()["current_balance"]) == 35000.00 # Reverted to 35000.00
 
 
 def test_transfer_intelligence_matching(client):
@@ -97,5 +97,5 @@ def test_transfer_intelligence_matching(client):
     assert tx["type"] == "TRANSFER"
     assert tx["account_id"] == src_id
     assert tx["destination_account_id"] == dst_id
-    assert tx["amount"] == 5000.00
+    assert float(tx["amount"]) == 5000.00
     assert "ICICI" in tx["description"]

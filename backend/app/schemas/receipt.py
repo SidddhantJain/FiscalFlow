@@ -1,13 +1,13 @@
 from pydantic import BaseModel, ConfigDict
 from decimal import Decimal
-from datetime import date, datetime
+from datetime import date as dt_date, datetime
 
 class ReceiptBase(BaseModel):
     transaction_id: int | None = None
     file_path: str
     ocr_raw_text: str | None = None
     merchant_name: str | None = None
-    date: date | None = None
+    date: dt_date | None = None
     amount: Decimal | None = None
 
 class ReceiptCreate(ReceiptBase):
@@ -18,7 +18,7 @@ class ReceiptUpdate(BaseModel):
     file_path: str | None = None
     ocr_raw_text: str | None = None
     merchant_name: str | None = None
-    date: date | None = None
+    date: dt_date | None = None
     amount: Decimal | None = None
 
 class Receipt(ReceiptBase):

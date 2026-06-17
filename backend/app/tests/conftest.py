@@ -1,13 +1,20 @@
 import pytest
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
-from app.database import Base, get_db
+from app.database import get_db
 from app.main import app
-from app.models.user import User
 
-# In-memory SQLite for testing
-SQLALCHEMY_DATABASE_URL = "sqlite://"
+# Explicitly import all models to register them in Base.metadata
+from app.models import (
+    Base, User, Account, Category, Transaction, Budget, 
+    Goal, Subscription, Investment, AssetLiability, Receipt, 
+    FinancialYear, Insight
+)
+
+# File-based SQLite for reliable multi-threaded test access
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
@@ -17,6 +24,14 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 @pytest.fixture(scope="function")
 def db():
+    # Clean up any residual test database
+    if os.path.exists("./test.db"):
+        try:
+            os.remove("./test.db")
+        except OSError:
+            pass
+            
+    # Create all tables registered in Base.metadata
     Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
     
@@ -35,6 +50,13 @@ def db():
     finally:
         session.close()
         Base.metadata.drop_all(bind=engine)
+        
+        # Clean up database file after run
+        if os.path.exists("./test.db"):
+            try:
+                os.remove("./test.db")
+            except OSError:
+                pass
 
 @pytest.fixture(scope="function")
 def client(db):

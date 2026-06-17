@@ -9,7 +9,7 @@ def test_create_and_get_account(client):
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == "Test Savings"
-    assert data["current_balance"] == 5000.00
+    assert float(data["current_balance"]) == 5000.00
     account_id = data["id"]
     
     # List Accounts
@@ -31,7 +31,7 @@ def test_create_and_get_account(client):
     })
     assert response.status_code == 200
     assert response.json()["name"] == "HDFC Prime"
-    assert response.json()["current_balance"] == 6500.00
+    assert float(response.json()["current_balance"]) == 6500.00
 
     # Delete Account
     response = client.delete(f"/accounts/{account_id}")
