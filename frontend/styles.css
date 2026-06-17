@@ -1,0 +1,113 @@
+/* Import Inter from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700&display=swap');
+
+/* Base Reset & Custom Variables */
+:root {
+    --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-outfit: 'Outfit', sans-serif;
+}
+
+/* Tabular figures for numbers to align Rupee values precisely */
+.font-data-mono {
+    font-family: var(--font-inter);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+}
+
+/* Custom Scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Scrollbar hiding utility */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Zebra table styling */
+.zebra-table tbody tr:nth-child(even) {
+    background-color: #F8FAFC;
+}
+
+/* Premium Outlines & Depth */
+.glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.02);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+    border-color: #94A3B8;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+}
+
+.intelligence-glow {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Safe Area Insets for Mobile */
+.pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Transitions & Micro-interactions */
+.tab-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Circle Gauge Animation */
+@keyframes circleFill {
+    from {
+        stroke-dashoffset: 552.9;
+    }
+    to {
+        stroke-dashoffset: var(--target-offset);
+    }
+}
+
+.health-gauge-circle {
+    transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dynamic Interactive States */
+.btn-primary-ripple {
+    position: relative;
+    overflow: hidden;
+}
+.btn-primary-ripple:active {
+    transform: scale(0.98);
+}
