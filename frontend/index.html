@@ -329,13 +329,19 @@
                         <p class="text-xs text-on-surface-variant font-medium">Verify categorization engine accuracy metrics below.</p>
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <button class="flex items-center gap-1.5 px-4 py-2 border border-outline-variant bg-white rounded-lg text-xs font-bold text-primary hover:bg-surface-container-low transition-colors" onclick="openModal('import-modal')">
-                            <span class="material-symbols-outlined text-sm">upload_file</span> Import statement
+                        <button class="flex items-center gap-1.5 px-3.5 py-2 border border-outline-variant bg-white rounded-lg text-xs font-bold text-primary hover:bg-surface-container-low transition-colors shadow-sm" onclick="openStatementsModal()">
+                            <span class="material-symbols-outlined text-sm text-indigo-600">folder_open</span> Statement Files
                         </button>
-                        <button class="flex items-center gap-1.5 px-4 py-2 border border-outline-variant bg-white rounded-lg text-xs font-bold text-primary hover:bg-surface-container-low transition-colors" onclick="triggerTransferDetection()">
+                        <button class="flex items-center gap-1.5 px-3.5 py-2 border border-outline-variant bg-white rounded-lg text-xs font-bold text-primary hover:bg-surface-container-low transition-colors shadow-sm" onclick="exportAxisStatement()">
+                            <span class="material-symbols-outlined text-sm text-teal-600">download</span> Download Axis Statement
+                        </button>
+                        <button class="flex items-center gap-1.5 px-3.5 py-2 border border-outline-variant bg-white rounded-lg text-xs font-bold text-primary hover:bg-surface-container-low transition-colors shadow-sm" onclick="openModal('import-modal')">
+                            <span class="material-symbols-outlined text-sm">upload_file</span> Import Statement
+                        </button>
+                        <button class="flex items-center gap-1.5 px-3.5 py-2 border border-outline-variant bg-white rounded-lg text-xs font-bold text-primary hover:bg-surface-container-low transition-colors shadow-sm" onclick="triggerTransferDetection()">
                             <span class="material-symbols-outlined text-sm">sync_alt</span> Match Transfers
                         </button>
-                        <button class="flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 transition-all" onclick="openModal('add-tx-modal')">
+                        <button class="flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 transition-all shadow-sm" onclick="openModal('add-tx-modal')">
                             <span class="material-symbols-outlined text-sm">add</span> Add Entry
                         </button>
                     </div>
@@ -1310,11 +1316,112 @@
                         <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('UPI')">+ UPI</button>
                     </div>
                 </div>
+                <div class="flex items-center gap-2 pt-1">
+                    <input id="edit-tag-learn-rule" type="checkbox" checked class="rounded border-outline-variant text-primary focus:ring-primary h-4 w-4"/>
+                    <label for="edit-tag-learn-rule" class="text-on-surface-variant font-medium text-xs cursor-pointer">
+                        Remember and auto-tag repetitive transactions from this merchant
+                    </label>
+                </div>
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" class="px-4 py-2.5 border border-outline-variant rounded-lg text-primary hover:bg-surface-container-low" onclick="closeModal('edit-tag-modal')">Cancel</button>
                     <button type="submit" class="px-4 py-2.5 bg-primary text-on-primary rounded-lg font-bold hover:opacity-90">Update Tags</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Statement Attachments & Export Hub Modal -->
+    <div id="statements-manager-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-primary/40 backdrop-blur-sm px-4">
+        <div class="bg-white rounded-xl border border-outline-variant p-6 w-full max-w-2xl shadow-2xl relative fade-in max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h3 class="text-base font-bold text-primary flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">description</span> Bank Statements & Export Hub
+                    </h3>
+                    <p class="text-xs text-on-surface-variant mt-0.5">Manage uploaded statement files, download original copies, and export data in Axis Bank format.</p>
+                </div>
+                <button class="material-symbols-outlined text-outline hover:text-primary transition-colors text-[20px]" onclick="closeModal('statements-manager-modal')">close</button>
+            </div>
+
+            <!-- Export Tools Panel -->
+            <div class="p-4 bg-surface-container-low rounded-xl border border-outline-variant mb-6 space-y-3">
+                <h4 class="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm text-teal-600">file_download</span> Download Ledger in Bank Statement Format
+                </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div>
+                        <label class="block text-on-surface-variant mb-1 text-[11px]">Filter Account</label>
+                        <select id="export-account" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2 text-xs">
+                            <option value="">All Accounts</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-on-surface-variant mb-1 text-[11px]">From Date</label>
+                        <input id="export-start-date" type="date" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2 text-xs"/>
+                    </div>
+                    <div>
+                        <label class="block text-on-surface-variant mb-1 text-[11px]">To Date</label>
+                        <input id="export-end-date" type="date" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2 text-xs"/>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 pt-1">
+                    <button type="button" class="px-3.5 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-sm" onclick="exportFilteredAxisStatement()">
+                        <span class="material-symbols-outlined text-sm">download</span> Download Axis Statement (CSV)
+                    </button>
+                    <button type="button" class="px-3.5 py-2 border border-outline-variant bg-white rounded-lg text-xs font-bold text-primary flex items-center gap-1.5 hover:bg-surface-container-high active:scale-95 transition-all shadow-sm" onclick="exportFullLedgerCSV()">
+                        <span class="material-symbols-outlined text-sm">table_view</span> Download Full Ledger CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- Uploaded Statement Attachments Table -->
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between items-center">
+                    <h4 class="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm text-indigo-600">attachment</span> Stored Statement Attachments
+                    </h4>
+                    <span id="statements-count-badge" class="text-[11px] text-on-surface-variant font-semibold">0 Files</span>
+                </div>
+                <div class="border border-outline-variant rounded-xl overflow-hidden">
+                    <table class="w-full text-left zebra-table border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-surface-container text-on-surface-variant border-b border-outline-variant text-[10px] font-bold uppercase tracking-wider">
+                                <th class="px-4 py-3">File Name</th>
+                                <th class="px-4 py-3">Account</th>
+                                <th class="px-4 py-3">Parser Type</th>
+                                <th class="px-4 py-3">Uploaded</th>
+                                <th class="px-4 py-3">Size</th>
+                                <th class="px-4 py-3 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statements-table-body" class="divide-y divide-outline-variant">
+                            <!-- Dynamic statement file rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Repetitive Tag Rules Memory Section -->
+            <div class="border-t border-outline-variant pt-5 space-y-3">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h4 class="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-sm text-amber-600">auto_awesome</span> Repetitive Tag Memory (Task Reducer)
+                        </h4>
+                        <p class="text-[11px] text-on-surface-variant">Patterns learned from your previous tagging actions that auto-tag identical transactions.</p>
+                    </div>
+                    <button type="button" class="px-3 py-1.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant rounded-lg text-xs font-bold text-primary flex items-center gap-1 transition-all" onclick="reapplyAllTagRules()">
+                        <span class="material-symbols-outlined text-sm">replay</span> Re-Apply Rules
+                    </button>
+                </div>
+                <div id="tag-rules-container" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <!-- Dynamic learned rules -->
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-6 border-t border-outline-variant mt-6">
+                <button type="button" class="px-4 py-2 border border-outline-variant rounded-lg text-primary hover:bg-surface-container-low text-xs font-bold" onclick="closeModal('statements-manager-modal')">Close</button>
+            </div>
         </div>
     </div>
 

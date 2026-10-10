@@ -112,15 +112,47 @@ Transactions are automatically tagged and categorized on import or manual entry 
 - `end_date`: Date
 - `notes`: String (nullable, strategy and limit notes)
 
+### 3. `StatementFile` (`app.models.statement_file`)
+- `id`: Integer (PK)
+- `user_id`: Integer (FK -> `User.id`)
+- `filename`: Original uploaded filename (e.g. `Axis_Statement_Oct2024.csv`)
+- `saved_filename`: Local persistent path in `backend/uploads/statements/`
+- `file_size`: Size in bytes
+- `bank_type`: Parser type (e.g. `AXIS`, `HDFC`, `SBI`, `GENERIC`)
+- `transaction_count`: Number of imported transactions
+- `upload_date`: Timestamp of upload
+
+### 4. `UserTagRule` (`app.models.tag_rule`)
+- `id`: Integer (PK)
+- `user_id`: Integer (FK -> `User.id`)
+- `pattern`: Merchant substring / normalized pattern (e.g. `swiggy`, `bmtc`, `groww`)
+- `tags`: Comma-separated tags to automatically apply (e.g. `Food, Dining, Lunch`)
+- `category_id`: Associated category ID (optional)
+- `match_count`: How many times this rule has been matched
+
 ---
 
-## 6. Key API Endpoints
+## 6. Repetitive Transaction Auto-Tagging Memory
+To eliminate repetitive manual tagging:
+- When a user adds/edits tags on a transaction, `learn_user_tag_rule()` creates or updates a persistent `UserTagRule`.
+- Future imports and manual transaction entries query `UserTagRule` via `apply_learned_tag_rules()` and auto-apply the user's custom tags.
+- The user can view, manage, and re-apply learned rules across all historical transactions with one click via `POST /statements/tag-rules/apply-all`.
+
+---
+
+## 7. Key API Endpoints
 
 - `GET /transactions/?tag=Food&search=...`: Lists transactions filtered by date, type, account, and tag.
-- `POST /transactions/`: Creates a transaction with automatic tag extraction.
-- `PUT /transactions/{tx_id}`: Updates transaction fields including tags, category, and notes.
+- `POST /transactions/`: Creates a transaction with automatic tag extraction and learned rule matching.
+- `PUT /transactions/{tx_id}`: Updates transaction fields, tags, category, and updates learned tag memory.
 - `DELETE /transactions/{tx_id}`: Reverts account balance and deletes record.
-- `POST /transactions/import`: Parses Axis/HDFC/SBI/generic CSV statements and auto-categorizes + tags entries.
+- `POST /transactions/import`: Parses and persistently stores bank statement files, extracts transactions, auto-categorizes, and applies learned tags.
+- `GET /statements/`: Lists all uploaded and stored statement files.
+- `GET /statements/{file_id}/download`: Downloads the exact original raw statement file uploaded by the user.
+- `GET /statements/export/axis`: Downloads current transactions formatted identically to Axis Bank statements (`SRL NO`, `Tran Date`, `CHQNO`, `PARTICULARS`, `DR`, `CR`, `BAL`, `SOL`).
+- `GET /statements/export/full-csv`: Downloads full transaction ledger with tags, categories, accounts, and reference numbers.
+- `GET /statements/tag-rules`: Lists all learned repetitive tag rules.
+- `POST /statements/tag-rules/apply-all`: Scans all past transactions and re-applies learned tag rules.
 - `GET /budgets/`: Lists all user budgets with live-computed spending.
 - `GET /budgets/summary`: Returns master planned income, actual spent, flex buffer, distribution percentages, and overgrown alerts.
 - `POST /budgets/reset-master`: Resets and seeds the exact Master Budget (₹31,000 cash flow).
@@ -130,13 +162,13 @@ Transactions are automatically tagged and categorized on import or manual entry 
 
 ---
 
-## 7. How to Run & Verify
+## 8. How to Run & Verify
 
 1. **Start Server**:
    ```bash
    python start.py
    ```
-   Opens `http://127.0.0.1:8000` with live dashboard, transactions ledger, master budget tracker, and AI insights.
+   Opens `http://127.0.0.1:8000` with live dashboard, transactions ledger, master budget tracker, statements manager, and AI insights.
 
 2. **Stop Server**:
    ```bash
@@ -145,5 +177,5 @@ Transactions are automatically tagged and categorized on import or manual entry 
 
 3. **Run Automated Test Suite**:
    ```bash
-   backend\.venv\Scripts\python.exe -m pytest backend/tests/
+   backend\.venv\Scripts\python.exe -m pytest backend/app/tests/ -v
    ```

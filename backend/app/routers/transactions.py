@@ -30,7 +30,7 @@ def create_transaction(tx: TransactionCreate, db: Session = Depends(get_db), use
             cat = db.query(Category).filter(Category.id == tx.category_id).first()
             if cat:
                 cat_name = cat.name
-        tags = extract_transaction_tags(tx.description, cat_name, tx.type)
+        tags = extract_transaction_tags(tx.description, cat_name, tx.type, db, user_id)
 
     db_tx = Transaction(
         date=tx.date,
@@ -103,6 +103,14 @@ def list_transactions(
         
     return query.order_by(Transaction.date.desc()).all()
 
+import os
+import time
+from app.models.statement_file import StatementFile
+from app.services.ai_engine import auto_categorize_uncategorized_transactions, extract_transaction_tags, learn_user_tag_rule
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "statements")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 @router.put("/{tx_id}", response_model=TransactionSchema)
 def update_transaction(
     tx_id: int,
@@ -123,6 +131,13 @@ def update_transaction(
         
     db.commit()
     db.refresh(db_tx)
+    
+    # Automatically learn tag rule for repetitive transactions if tags were set
+    if db_tx.tags:
+        learn_user_tag_rule(db, user_id, db_tx.description, db_tx.tags, db_tx.category_id)
+        # Apply learned rule to any existing uncategorized/untagged transactions with the same description
+        auto_categorize_uncategorized_transactions(db, user_id)
+        
     return db_tx
 
 @router.delete("/{tx_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -174,13 +189,37 @@ async def import_statement(
     if not parsed_txs:
         return {"message": "No valid transactions parsed from statement."}
         
+    # Persist the raw bank statement file locally
+    saved_filename = f"{int(time.time())}_{file.filename.replace(' ', '_')}"
+    saved_filepath = os.path.join(UPLOAD_DIR, saved_filename)
+    with open(saved_filepath, "wb") as f_out:
+        f_out.write(file_bytes)
+        
+    # Record StatementFile metadata in database
+    stmt_record = StatementFile(
+        user_id=user_id,
+        account_id=account_id,
+        filename=file.filename,
+        saved_filename=saved_filename,
+        file_size=len(file_bytes),
+        bank_type=bank_type,
+        transaction_count=len(parsed_txs)
+    )
+    db.add(stmt_record)
+    db.commit()
+    
     imported = import_statement_transactions(db, account_id, parsed_txs)
     
-    # Auto-run engines post-import
+    # Auto-run engines post-import: applying learned tag rules, regex tags, and transfers
     auto_categorize_uncategorized_transactions(db, user_id)
     detect_and_link_transfers(db, user_id)
     
-    return {"message": f"Successfully parsed {len(parsed_txs)} transactions, imported {imported} new records."}
+    return {
+        "message": f"Successfully parsed {len(parsed_txs)} transactions and imported {imported} new records.",
+        "statement_id": stmt_record.id,
+        "filename": file.filename,
+        "transaction_count": len(parsed_txs)
+    }
 
 @router.post("/detect-transfers", status_code=status.HTTP_200_OK)
 def trigger_transfer_detection(db: Session = Depends(get_db), user_id: int = Depends(get_default_user_id)):

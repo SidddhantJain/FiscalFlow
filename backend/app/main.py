@@ -6,7 +6,7 @@ import os
 from app.database import engine, Base, SessionLocal
 from app.models.user import User
 from app.models.category import Category
-from app.routers import accounts, transactions, budgets, goals, subscriptions, investments, reports, insights
+from app.routers import accounts, transactions, budgets, goals, subscriptions, investments, reports, insights, statements
 
 from datetime import date, datetime, timedelta
 from sqlalchemy import text
@@ -167,6 +167,7 @@ app.include_router(subscriptions.router)
 app.include_router(investments.router)
 app.include_router(reports.router)
 app.include_router(insights.router)
+app.include_router(statements.router)
 
 # Mount frontend static files directory
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))

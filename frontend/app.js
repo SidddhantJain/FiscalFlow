@@ -12,6 +12,8 @@ const state = {
     categories: [],
     budgets: [],
     budgetSummary: null,
+    statementFiles: [],
+    tagRules: [],
     insights: [],
     goals: [],
     subscriptions: [],
@@ -1810,6 +1812,7 @@ async function handleEditTag(e) {
     e.preventDefault();
     const txId = document.getElementById('edit-tag-tx-id').value;
     const tags = document.getElementById('edit-tag-input').value.trim();
+    const learnRule = document.getElementById('edit-tag-learn-rule')?.checked ?? true;
 
     try {
         showLoading(true);
@@ -1821,7 +1824,11 @@ async function handleEditTag(e) {
         if (!res.ok) throw new Error("Failed to update transaction tags");
 
         closeModal('edit-tag-modal');
-        showToast("Transaction tags updated successfully!", "success");
+        if (learnRule) {
+            showToast("Tags updated & rule memorized for future repetitive transactions!", "success");
+        } else {
+            showToast("Transaction tags updated successfully!", "success");
+        }
         await fetchTransactions();
         renderTransactionsTab();
     } catch (err) {
@@ -1830,3 +1837,164 @@ async function handleEditTag(e) {
         showLoading(false);
     }
 }
+
+// ==========================================
+// STATEMENT ATTACHMENTS & EXPORTS OPERATIONS
+// ==========================================
+
+async function fetchStatementFiles() {
+    try {
+        const res = await fetch(`${API_BASE}/statements/`);
+        if (!res.ok) throw new Error("Failed to load statements");
+        state.statementFiles = await res.json();
+    } catch (err) {
+        console.error("Error loading statements: ", err);
+    }
+}
+
+async function fetchTagRules() {
+    try {
+        const res = await fetch(`${API_BASE}/statements/tag-rules`);
+        if (!res.ok) throw new Error("Failed to load tag rules");
+        state.tagRules = await res.json();
+    } catch (err) {
+        console.error("Error loading tag rules: ", err);
+    }
+}
+
+window.openStatementsModal = async function() {
+    showLoading(true);
+    await Promise.all([fetchStatementFiles(), fetchTagRules()]);
+    showLoading(false);
+
+    // Populate Account select in export panel
+    const expAcc = document.getElementById('export-account');
+    if (expAcc) {
+        expAcc.innerHTML = '<option value="">All Accounts</option>';
+        state.accounts.forEach(a => {
+            expAcc.innerHTML += `<option value="${a.id}">${a.name} (${a.bank_name})</option>`;
+        });
+    }
+
+    // Populate Stored Statements Table
+    const tbody = document.getElementById('statements-table-body');
+    const badge = document.getElementById('statements-count-badge');
+    if (badge) badge.textContent = `${state.statementFiles.length} File${state.statementFiles.length !== 1 ? 's' : ''}`;
+
+    if (tbody) {
+        tbody.innerHTML = '';
+        if (state.statementFiles.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-4 py-8 text-center text-on-surface-variant text-xs">
+                        No statement attachments stored yet. Upload a statement via "Import Statement" to view and download it here anytime.
+                    </td>
+                </tr>`;
+        } else {
+            state.statementFiles.forEach(f => {
+                const uploadDate = new Date(f.upload_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                tbody.innerHTML += `
+                    <tr class="hover:bg-surface-container-low transition-colors">
+                        <td class="px-4 py-3 font-semibold text-primary">
+                            <div class="flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm text-teal-600">receipt</span>
+                                <span class="truncate max-w-xs" title="${f.filename}">${f.filename}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-on-surface-variant whitespace-nowrap">${f.account_name}</td>
+                        <td class="px-4 py-3 whitespace-nowrap"><span class="px-2 py-0.5 bg-surface-container rounded text-[10px] font-bold text-primary">${f.bank_type}</span></td>
+                        <td class="px-4 py-3 text-on-surface-variant whitespace-nowrap">${uploadDate}</td>
+                        <td class="px-4 py-3 font-data-mono whitespace-nowrap">${f.file_size_kb} KB</td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <button class="px-2.5 py-1 bg-primary text-on-primary rounded text-xs font-bold hover:opacity-90 active:scale-95 transition-all flex items-center gap-1 ml-auto" onclick="downloadOriginalStatement(${f.id})">
+                                <span class="material-symbols-outlined text-[14px]">download</span> Download Original
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+        }
+    }
+
+    // Populate Tag Rules Memory Container
+    const rulesContainer = document.getElementById('tag-rules-container');
+    if (rulesContainer) {
+        rulesContainer.innerHTML = '';
+        if (state.tagRules.length === 0) {
+            rulesContainer.innerHTML = `
+                <p class="col-span-2 py-3 text-center text-on-surface-variant text-xs">
+                    No custom repetitive rules memorized yet. When you edit tags on any transaction, FiscalFlow automatically remembers the merchant pattern.
+                </p>`;
+        } else {
+            state.tagRules.forEach(r => {
+                rulesContainer.innerHTML += `
+                    <div class="p-2.5 bg-surface-container rounded-lg border border-outline-variant flex items-center justify-between">
+                        <div>
+                            <span class="font-bold text-primary">"${r.pattern}"</span>
+                            <div class="flex flex-wrap gap-1 mt-1">
+                                ${r.tags.split(',').map(t => `<span class="px-1.5 py-0.5 bg-white border border-outline-variant rounded text-[9px] font-semibold text-primary">#${t.trim()}</span>`).join('')}
+                            </div>
+                        </div>
+                        <span class="text-[10px] text-on-surface-variant font-bold bg-surface-container-high px-2 py-0.5 rounded-full">${r.match_count}x applied</span>
+                    </div>`;
+            });
+        }
+    }
+
+    openModal('statements-manager-modal');
+};
+
+window.downloadOriginalStatement = function(statementId) {
+    window.location.href = `${API_BASE}/statements/${statementId}/download`;
+    showToast("Downloading original statement file...", "info");
+};
+
+window.exportAxisStatement = function() {
+    window.location.href = `${API_BASE}/statements/export/axis`;
+    showToast("Downloading transactions in Axis Bank statement format (CSV)...", "success");
+};
+
+window.exportFilteredAxisStatement = function() {
+    const accId = document.getElementById('export-account')?.value || '';
+    const start = document.getElementById('export-start-date')?.value || '';
+    const end = document.getElementById('export-end-date')?.value || '';
+    
+    let url = `${API_BASE}/statements/export/axis?`;
+    if (accId) url += `account_id=${accId}&`;
+    if (start) url += `start_date=${start}&`;
+    if (end) url += `end_date=${end}&`;
+    
+    window.location.href = url;
+    showToast("Downloading filtered Axis Bank Statement CSV...", "success");
+};
+
+window.exportFullLedgerCSV = function() {
+    const accId = document.getElementById('export-account')?.value || '';
+    const start = document.getElementById('export-start-date')?.value || '';
+    const end = document.getElementById('export-end-date')?.value || '';
+    
+    let url = `${API_BASE}/statements/export/full-csv?`;
+    if (accId) url += `account_id=${accId}&`;
+    if (start) url += `start_date=${start}&`;
+    if (end) url += `end_date=${end}&`;
+    
+    window.location.href = url;
+    showToast("Downloading full transaction ledger CSV...", "success");
+};
+
+window.reapplyAllTagRules = async function() {
+    try {
+        showLoading(true);
+        const res = await fetch(`${API_BASE}/statements/tag-rules/apply-all`, { method: 'POST' });
+        if (!res.ok) throw new Error("Failed to re-apply rules");
+        const data = await res.json();
+        showToast(data.message || "Learned rules re-applied successfully!", "success");
+        await fetchTransactions();
+        await fetchTagRules();
+        renderTransactionsTab();
+        openStatementsModal();
+    } catch (err) {
+        showToast("Error: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+};

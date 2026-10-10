@@ -9,6 +9,7 @@ from app.models.category import Category
 from app.models.subscription import Subscription
 from app.models.asset_liability import AssetLiability
 from app.models.goal import Goal
+from app.models.tag_rule import UserTagRule
 
 # 1. TRANSACTION CATEGORIZATION & AUTO-TAGGING RULE-BASED ENGINE
 CATEGORY_KEYWORDS = {
@@ -75,24 +76,89 @@ TAG_RULES = [
     (r"\b(upi|gpay|phonepe|paytm|cred|qr|scan)\b", ["UPI"])
 ]
 
-def extract_transaction_tags(desc: str, category_name: str = "", tx_type: str = "") -> str:
+def clean_pattern_text(text: str) -> str:
+    """Extracts a normalized core merchant name pattern for learning tag rules."""
+    cleaned = re.sub(r'^(upi/|pos/|neft/|rtgs/|imps/|\d+/)+', '', text.strip().lower())
+    cleaned = re.sub(r'/[^/]+$', '', cleaned)
+    cleaned = re.sub(r'@[a-zA-Z0-9]+', '', cleaned)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    return cleaned if len(cleaned) >= 3 else text.strip().lower()
+
+def learn_user_tag_rule(db: Session, user_id: int, description: str, tags: str, category_id: int | None = None) -> UserTagRule | None:
     """
-    Extracts relevant tags from transaction description, category name, and transaction type.
-    Returns a unique comma-separated string of tags (e.g. 'Food, Cafe, UPI').
+    Learns or updates a repetitive transaction tag rule when the user manually tags a transaction.
+    """
+    if not tags or not description:
+        return None
+        
+    pattern = clean_pattern_text(description)
+    if not pattern or len(pattern) < 2:
+        return None
+        
+    existing = db.query(UserTagRule).filter(
+        UserTagRule.user_id == user_id,
+        UserTagRule.pattern == pattern
+    ).first()
+    
+    if existing:
+        existing.tags = tags
+        if category_id:
+            existing.category_id = category_id
+        existing.match_count += 1
+        db.commit()
+        db.refresh(existing)
+        return existing
+    else:
+        new_rule = UserTagRule(
+            user_id=user_id,
+            pattern=pattern,
+            tags=tags,
+            category_id=category_id,
+            match_count=1
+        )
+        db.add(new_rule)
+        db.commit()
+        db.refresh(new_rule)
+        return new_rule
+
+def apply_learned_tag_rules(db: Session, user_id: int, desc: str) -> tuple[str | None, int | None]:
+    """
+    Checks if the transaction description matches any repetitive learned tag rules for the user.
     """
     desc_lower = desc.lower()
-    tags = set()
+    rules = db.query(UserTagRule).filter(UserTagRule.user_id == user_id).order_by(UserTagRule.match_count.desc()).all()
+    for rule in rules:
+        if rule.pattern in desc_lower:
+            return rule.tags, rule.category_id
+    return None, None
 
+def extract_transaction_tags(desc: str, category_name: str = "", tx_type: str = "", db: Session | None = None, user_id: int | None = None) -> str:
+    """
+    Extracts relevant tags from learned user rules, regex heuristics, category name, and transaction type.
+    Returns a unique comma-separated string of tags (e.g. 'Food, Cafe, UPI').
+    """
+    tags = set()
+    desc_lower = desc.lower()
+
+    # 1. Check learned user rules first if db and user_id are supplied
+    if db and user_id:
+        learned_tags, _ = apply_learned_tag_rules(db, user_id, desc)
+        if learned_tags:
+            for t in learned_tags.split(','):
+                if t.strip():
+                    tags.add(t.strip())
+
+    # 2. Apply standard regex rules
     for pattern, tag_list in TAG_RULES:
         if re.search(pattern, desc_lower):
             for t in tag_list:
                 tags.add(t)
 
-    # If UPI is in description or reference
+    # 3. If UPI is in description or reference
     if "upi" in desc_lower or "/upi/" in desc_lower or "@" in desc_lower:
         tags.add("UPI")
 
-    # Add category-derived tags if available
+    # 4. Add category-derived tags if available
     if category_name:
         if "Rent" in category_name:
             tags.add("Rent")
@@ -134,7 +200,7 @@ def categorize_transaction_desc(desc: str) -> str:
 
 def auto_categorize_uncategorized_transactions(db: Session, user_id: int) -> int:
     """
-    Finds all uncategorized transactions for the user, runs categorization rules,
+    Finds transactions for the user, runs learned user tag rules and categorization rules,
     auto-generates intelligent tags, and updates their category_id and tags.
     Also updates transaction type to align with the matched category's type.
     """
@@ -146,7 +212,7 @@ def auto_categorize_uncategorized_transactions(db: Session, user_id: int) -> int
     accounts = db.query(Account).filter(Account.user_id == user_id).all()
     account_ids = [a.id for a in accounts]
     
-    # Process both uncategorized and transactions missing tags
+    # Process transactions
     txs = db.query(Transaction).filter(
         Transaction.account_id.in_(account_ids)
     ).all()
@@ -156,7 +222,19 @@ def auto_categorize_uncategorized_transactions(db: Session, user_id: int) -> int
         changed = False
         cat_name = id_to_name.get(tx.category_id, "")
         
-        # 1. Categorize if unassigned or 'Other'
+        # 1. First check learned rules for repetitive transactions
+        learned_tags, learned_cat_id = apply_learned_tag_rules(db, user_id, tx.description)
+        if learned_tags and (not tx.tags or tx.tags != learned_tags):
+            tx.tags = learned_tags
+            changed = True
+        if learned_cat_id and (not tx.category_id or tx.category_id != learned_cat_id):
+            tx.category_id = learned_cat_id
+            cat_name = id_to_name.get(learned_cat_id, "")
+            if cat_name in cat_type_map:
+                tx.type = cat_type_map[cat_name]
+            changed = True
+        
+        # 2. Categorize if still unassigned or 'Other'
         if not tx.category_id or cat_name == "Other":
             guessed_name = categorize_transaction_desc(tx.description)
             if guessed_name != "Other" and guessed_name in cat_map:
@@ -165,9 +243,9 @@ def auto_categorize_uncategorized_transactions(db: Session, user_id: int) -> int
                 cat_name = guessed_name
                 changed = True
         
-        # 2. Extract and assign tags if empty
+        # 3. Extract and assign tags if empty
         if not tx.tags:
-            generated_tags = extract_transaction_tags(tx.description, cat_name, tx.type)
+            generated_tags = extract_transaction_tags(tx.description, cat_name, tx.type, db, user_id)
             if generated_tags:
                 tx.tags = generated_tags
                 changed = True

@@ -1,4 +1,5 @@
 import pytest
+import io
 from datetime import date
 from decimal import Decimal
 from app.models.account import Account
@@ -145,3 +146,77 @@ def test_manual_transaction_tag_update(client, db):
     assert update_res.status_code == 200
     updated_tx = update_res.json()
     assert updated_tx["tags"] == "Medical, Essentials, CustomTag"
+
+def test_repetitive_transaction_tag_learning(client, db):
+    acc = Account(user_id=1, name="Axis Bank", bank_name="Axis Bank", account_type="SALARY", current_balance=Decimal("5000.00"))
+    db.add(acc)
+    db.commit()
+    db.refresh(acc)
+    
+    # 1. Insert a transaction with a unique repetitive pattern
+    tx1_data = {
+        "date": date.today().isoformat(),
+        "description": "Chai Point Whitefield Tech Lounge",
+        "amount": 120.00,
+        "type": "EXPENSE",
+        "account_id": acc.id
+    }
+    r1 = client.post("/transactions/", json=tx1_data).json()
+    
+    # 2. User manually custom tags this transaction
+    client.put(f"/transactions/{r1['id']}", json={"tags": "Office Snacks, Chai, Sigma Lunch"})
+    
+    # 3. Verify rule is remembered in tag rules list
+    rules_res = client.get("/statements/tag-rules")
+    assert rules_res.status_code == 200
+    rules = rules_res.json()
+    assert any("chai point" in r["pattern"] for r in rules)
+    
+    # 4. When a new identical or repetitive transaction arrives, it automatically inherits the learned tags!
+    tx2_data = {
+        "date": date.today().isoformat(),
+        "description": "UPI/998811/Chai Point Whitefield Tech Lounge/chaipoint@okaxis",
+        "amount": 140.00,
+        "type": "EXPENSE",
+        "account_id": acc.id
+    }
+    r2 = client.post("/transactions/", json=tx2_data).json()
+    assert "Office Snacks" in r2["tags"]
+    assert "Chai" in r2["tags"]
+
+def test_statement_file_persistence_download_and_axis_export(client, db):
+    acc = Account(user_id=1, name="Axis Savings", bank_name="Axis Bank", account_type="SAVINGS", current_balance=Decimal("20000.00"))
+    db.add(acc)
+    db.commit()
+    db.refresh(acc)
+    
+    # 1. Upload an Axis statement file
+    sample_csv = "Tran Date,CHQNO,PARTICULARS,DR,CR,BAL,SOL\n01-10-2024,-,SIGMA SOFT TECH PARK STIPEND OCT,,25000.00,25000.00,001\n"
+    files = {"file": ("oct_axis_statement.csv", io.BytesIO(sample_csv.encode("utf-8")), "text/csv")}
+    data = {"account_id": acc.id, "bank_type": "AXIS_CSV"}
+    
+    import_res = client.post("/transactions/import", data=data, files=files)
+    assert import_res.status_code == 200
+    res_data = import_res.json()
+    assert "statement_id" in res_data
+    statement_id = res_data["statement_id"]
+    
+    # 2. List statements
+    stmts_res = client.get("/statements/")
+    assert stmts_res.status_code == 200
+    stmts = stmts_res.json()
+    assert len(stmts) >= 1
+    assert any(s["id"] == statement_id for s in stmts)
+    
+    # 3. Download the original statement file
+    dl_res = client.get(f"/statements/{statement_id}/download")
+    assert dl_res.status_code == 200
+    assert dl_res.content.decode("utf-8") == sample_csv
+    
+    # 4. Export ledger in Axis Statement format
+    export_res = client.get("/statements/export/axis")
+    assert export_res.status_code == 200
+    export_content = export_res.content.decode("utf-8")
+    assert "Tran Date,CHQNO,PARTICULARS,DR,CR,BAL,SOL" in export_content
+    assert "SIGMA SOFT TECH PARK STIPEND OCT" in export_content
+

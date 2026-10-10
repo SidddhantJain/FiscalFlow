@@ -12,6 +12,9 @@ from app.models.receipt import Receipt
 from app.models.financial_year import FinancialYear
 from app.models.insight import Insight
 
+from app.models.statement_file import StatementFile
+from app.models.tag_rule import UserTagRule
+
 __all__ = [
     "Base",
     "User",
@@ -25,5 +28,7 @@ __all__ = [
     "AssetLiability",
     "Receipt",
     "FinancialYear",
-    "Insight"
+    "Insight",
+    "StatementFile",
+    "UserTagRule"
 ]
