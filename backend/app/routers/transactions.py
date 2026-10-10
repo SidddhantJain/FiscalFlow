@@ -14,6 +14,8 @@ from app.services.ai_engine import auto_categorize_uncategorized_transactions
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
+from app.services.ai_engine import auto_categorize_uncategorized_transactions, extract_transaction_tags
+
 @router.post("/", response_model=TransactionSchema, status_code=status.HTTP_201_CREATED)
 def create_transaction(tx: TransactionCreate, db: Session = Depends(get_db), user_id: int = Depends(get_default_user_id)):
     # Verify account exists
@@ -21,6 +23,15 @@ def create_transaction(tx: TransactionCreate, db: Session = Depends(get_db), use
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
         
+    tags = tx.tags
+    if not tags:
+        cat_name = ""
+        if tx.category_id:
+            cat = db.query(Category).filter(Category.id == tx.category_id).first()
+            if cat:
+                cat_name = cat.name
+        tags = extract_transaction_tags(tx.description, cat_name, tx.type)
+
     db_tx = Transaction(
         date=tx.date,
         description=tx.description,
@@ -31,7 +42,8 @@ def create_transaction(tx: TransactionCreate, db: Session = Depends(get_db), use
         destination_account_id=tx.destination_account_id,
         reference_number=tx.reference_number,
         is_recurring=tx.is_recurring,
-        notes=tx.notes
+        notes=tx.notes,
+        tags=tags
     )
     db.add(db_tx)
     
@@ -40,14 +52,14 @@ def create_transaction(tx: TransactionCreate, db: Session = Depends(get_db), use
     # If TRANSFER, decrease from primary account and increase destination account.
     if tx.type == "INCOME":
         account.current_balance += tx.amount
-    elif tx.type == "TRANSFER" and tx.destination_account_id:
+    elif tx.type in ["TRANSFER", "SAVINGS", "INVESTMENT"] and tx.destination_account_id:
         dest_account = db.query(Account).filter(Account.id == tx.destination_account_id, Account.user_id == user_id).first()
         if not dest_account:
             raise HTTPException(status_code=404, detail="Destination account not found")
         account.current_balance -= tx.amount
         dest_account.current_balance += tx.amount
     else:
-        # EXPENSE, SAVINGS, INVESTMENT, LOAN, TAX
+        # EXPENSE, LOAN, TAX (and SAVINGS/INVESTMENT if no destination account)
         account.current_balance -= tx.amount
         
     db.commit()
@@ -61,6 +73,7 @@ def list_transactions(
     tx_type: str | None = None,
     category_id: int | None = None,
     account_id: int | None = None,
+    tag: str | None = None,
     search: str | None = None,
     db: Session = Depends(get_db),
     user_id: int = Depends(get_default_user_id)
@@ -83,10 +96,34 @@ def list_transactions(
         query = query.filter(Transaction.category_id == category_id)
     if account_id:
         query = query.filter(Transaction.account_id == account_id)
+    if tag:
+        query = query.filter(Transaction.tags.ilike(f"%{tag}%"))
     if search:
         query = query.filter(Transaction.description.ilike(f"%{search}%"))
         
     return query.order_by(Transaction.date.desc()).all()
+
+@router.put("/{tx_id}", response_model=TransactionSchema)
+def update_transaction(
+    tx_id: int,
+    tx_update: TransactionUpdate,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_default_user_id)
+):
+    user_accounts = db.query(Account).filter(Account.user_id == user_id).all()
+    user_account_ids = [a.id for a in user_accounts]
+    
+    db_tx = db.query(Transaction).filter(Transaction.id == tx_id, Transaction.account_id.in_(user_account_ids)).first()
+    if not db_tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+        
+    update_data = tx_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_tx, key, value)
+        
+    db.commit()
+    db.refresh(db_tx)
+    return db_tx
 
 @router.delete("/{tx_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_transaction(tx_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_default_user_id)):
@@ -102,7 +139,7 @@ def delete_transaction(tx_id: int, db: Session = Depends(get_db), user_id: int =
     account = db.query(Account).filter(Account.id == tx.account_id).first()
     if tx.type == "INCOME":
         account.current_balance -= tx.amount
-    elif tx.type == "TRANSFER" and tx.destination_account_id:
+    elif tx.type in ["TRANSFER", "SAVINGS", "INVESTMENT"] and tx.destination_account_id:
         dest_account = db.query(Account).filter(Account.id == tx.destination_account_id).first()
         if dest_account:
             dest_account.current_balance -= tx.amount

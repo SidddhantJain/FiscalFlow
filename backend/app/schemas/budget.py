@@ -9,6 +9,8 @@ class BudgetBase(BaseModel):
     spent: Decimal = Decimal("0.00")
     start_date: date
     end_date: date
+    name: str | None = None
+    notes: str | None = None
 
 class BudgetCreate(BudgetBase):
     pass
@@ -19,6 +21,8 @@ class BudgetUpdate(BaseModel):
     spent: Decimal | None = None
     start_date: date | None = None
     end_date: date | None = None
+    name: str | None = None
+    notes: str | None = None
 
 class Budget(BudgetBase):
     id: int

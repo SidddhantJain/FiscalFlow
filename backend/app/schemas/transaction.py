@@ -14,6 +14,7 @@ class TransactionBase(BaseModel):
     destination_account_id: int | None = None
     reference_number: str | None = None
     is_recurring: bool = False
+    tags: str | None = None
     notes: str | None = None
 
 class TransactionCreate(TransactionBase):
@@ -29,6 +30,7 @@ class TransactionUpdate(BaseModel):
     destination_account_id: int | None = None
     reference_number: str | None = None
     is_recurring: bool | None = None
+    tags: str | None = None
     notes: str | None = None
 
 class Transaction(TransactionBase):

@@ -10,33 +10,120 @@ from app.models.subscription import Subscription
 from app.models.asset_liability import AssetLiability
 from app.models.goal import Goal
 
-# 1. TRANSACTION CATEGORIZATION RULE-BASED ENGINE
+# 1. TRANSACTION CATEGORIZATION & AUTO-TAGGING RULE-BASED ENGINE
 CATEGORY_KEYWORDS = {
-    "Salary": ["salary", "paycheck", "employer", "wages", "direct dep"],
+    # Income Sources
+    "Internship Stipend": ["stipend", "sigma soft", "sigma tech", "internship", "sigma", "salary", "paycheck", "wages", "payroll"],
+    "Family Support": ["family support", "father", "mother", "papa", "mummy", "parents", "family transfer", "allowance"],
+    "Salary": ["salary", "employer", "direct dep", "ctc"],
     "Interest": ["interest", "int.", "fd payout", "savings interest"],
     "Dividend": ["dividend", "div.", "payout stock"],
-    "Refund": ["refund", "cashback", "reimbursement", "returned"],
-    "Food": ["swiggy", "zomato", "restaurant", "mcdonald", "starbucks", "food", "dine", "eat", "grocery", "groceries", "supermarket", "blinkit", "zepto", "instamart"],
-    "Transport": ["uber", "ola", "metro", "fuel", "petrol", "shell", "cng", "toll", "fastag"],
-    "Shopping": ["amazon", "flipkart", "myntra", "shopping", "retail", "zara", "hnm", "clothing", "electronics"],
-    "Entertainment": ["netflix", "spotify", "prime video", "youtube premium", "hotstar", "cinema", "movie", "bookmyshow", "gaming", "steam"],
-    "Utilities": ["electricity", "broadband", "bescom", "airtel", "jio", "water bill", "gas", "recharge", "googleone", "icloud"],
-    "Medical": ["hospital", "pharmacy", "medical", "doctor", "health", "apollo", "medplus", "dental"],
+    "Refund": ["refund", "cashback", "reimbursement", "returned", "rev."],
+    
+    # Master Budget Specific Allocations
+    "PG Rent & Covered Meals": ["pg rent", "rent", "hostel", "pg", "landlord", "colive", "stanza", "zolo", "room rent"],
+    "Daily Office Lunch (Mon–Sat)": ["sigma canteen", "office lunch", "lunch", "canteen", "thali", "mess", "cafe", "starbucks", "ccd", "chai point", "tea post", "coffee"],
+    "BMTC Bus Commute": ["bmtc", "namma metro", "metro", "chalo", "varthur", "kundalahalli", "bus fare", "ksrtc", "bmrc"],
+    "Lifestyle & Personal Essentials": ["kirana", "supermarket", "blinkit", "zepto", "instamart", "dmart", "recharge", "airtel", "jio", "vi", "medical", "pharmacy", "apollo", "medplus", "laundry", "toiletries", "salon"],
+    "Emergency Fund Allocation": ["emergency fund", "liquid savings", "reserve fund", "savings buffer"],
+    "Monthly SIP Investment": ["sip", "mutual fund", "groww", "angelone", "angle one", "zerodha", "coin", "kuvera", "uti", "hdfc mf", "sbi mf", "icici pru", "navi mf", "quant mf", "nippon"],
+    "Unallocated Flex Buffer": ["flex buffer", "unallocated buffer"],
+    
+    # Standard Categories Fallback
+    "Food": ["swiggy", "zomato", "restaurant", "mcdonald", "starbucks", "food", "dine", "eat", "grocery", "groceries", "pizza", "burger", "biryani", "bakery", "kfc", "dominos", "subway"],
+    "Transport": ["uber", "ola", "rapido", "fuel", "petrol", "shell", "cng", "toll", "fastag", "auto"],
+    "Shopping": ["amazon", "flipkart", "myntra", "shopping", "retail", "zara", "hnm", "clothing", "electronics", "zudio", "decathlon", "meesho"],
+    "Entertainment": ["netflix", "spotify", "prime video", "youtube premium", "hotstar", "cinema", "movie", "bookmyshow", "gaming", "steam", "pvr", "inox"],
+    "Utilities": ["electricity", "broadband", "bescom", "water bill", "gas", "googleone", "icloud", "wifi"],
+    "Medical": ["hospital", "pharmacy", "medical", "doctor", "health", "apollo", "medplus", "dental", "clinic", "1mg", "netmeds", "pharmeasy"],
     "Education": ["tuition", "school", "college", "course", "udemy", "coursera", "book", "stationery"],
-    "Travel": ["flight", "hotel", "irctc", "railway", "makemytrip", "airbnb", "vacation"],
-    "Insurance": ["lic", "hdfc ergo", "medical insurance", "car insurance", "term insurance"],
+    "Travel": ["flight", "hotel", "irctc", "railway", "makemytrip", "airbnb", "vacation", "indigo", "air india"],
+    "Insurance": ["lic", "hdfc ergo", "medical insurance", "car insurance", "term insurance", "acko"],
     "Mutual Funds": ["mutual fund", "sip", "groww", "zerodha", "coin", "kuvera"],
-    "Stocks": ["stocks", "shares", "angelone", "upstox", "trading"],
-    "Gold": ["sovereign gold", "sgb", "jeweller", "gold coin"],
+    "Stocks": ["stocks", "shares", "angelone", "angle one", "upstox", "trading", "kite"],
+    "Gold": ["sovereign gold", "sgb", "jeweller", "gold coin", "tanishq", "jar"],
     "FD": ["fixed deposit", "recurring deposit", "fd creation", "term deposit"],
     "PPF": ["ppf deposit", "public provident"],
     "NPS": ["nps deposit", "national pension"],
     "Savings Transfer": ["transfer to savings", "savings sweep", "emergency fund deposit"]
 }
 
+TAG_RULES = [
+    # Food / Cafe / Dining
+    (r"\b(cafe|coffee|tea|ccd|starbucks|chai|chai point|blue tokai|third wave)\b", ["Food", "Cafe"]),
+    (r"\b(swiggy|zomato|eats|restaurant|dhaba|thali|mess|lunch|dinner|canteen|bhojanalaya|pizza|burger|biryani|bakery|kfc|mcdonald|dominos|subway)\b", ["Food", "Dining"]),
+    # Groceries / Kirana / Essentials
+    (r"\b(kirana|provision|supermarket|mart|blinkit|zepto|instamart|dmart|bigbasket|nature basket|milk|vegetable|fruits)\b", ["Groceries", "Kirana", "Lifestyle"]),
+    # Commute / Transport
+    (r"\b(bmtc|bus|chalo|ksrtc)\b", ["Travel", "BMTC", "Commute"]),
+    (r"\b(metro|namma metro|bmrc|smart card)\b", ["Travel", "Metro", "Commute"]),
+    (r"\b(uber|ola|rapido|auto|cab|taxi|fuel|petrol|diesel|shell|hpcl|bpcl|ioc|toll|fastag)\b", ["Travel", "Transport"]),
+    # Housing / Rent
+    (r"\b(pg|rent|hostel|colive|stanza|zolo|landlord|room rent|flat)\b", ["Housing", "PG Rent"]),
+    # Medical & Health
+    (r"\b(medical|pharmacy|pharma|apollo|medplus|1mg|netmeds|pharmeasy|hospital|clinic|doctor|dental|diagnostic|lab|tablets|medicine)\b", ["Medical", "Healthcare"]),
+    # Lifestyle & Essentials
+    (r"\b(recharge|airtel|jio|vi|bsnl|broadband|bescom|laundry|salon|haircut|toiletries|spa)\b", ["Lifestyle", "Utilities"]),
+    (r"\b(amazon|flipkart|myntra|zudio|decathlon|retail|shopping|clothing)\b", ["Shopping", "Lifestyle"]),
+    # Investments & Savings
+    (r"\b(groww|angelone|angle one|zerodha|kite|coin|kuvera|upstox|sip|mutual fund|uti|quant|nippon|mirae|parag parikh|etf|equity|share|stocks)\b", ["Investment", "SIP"]),
+    (r"\b(emergency fund|reserve|fd|fixed deposit|rd|sweep)\b", ["Savings", "Emergency Fund"]),
+    # Income Sources
+    (r"\b(stipend|internship|sigma soft|sigma tech|payroll|wages)\b", ["Income", "Stipend"]),
+    (r"\b(family|father|mother|papa|mummy|support|allowance)\b", ["Income", "Family Support"]),
+    # Channel / Payment mode
+    (r"\b(upi|gpay|phonepe|paytm|cred|qr|scan)\b", ["UPI"])
+]
+
+def extract_transaction_tags(desc: str, category_name: str = "", tx_type: str = "") -> str:
+    """
+    Extracts relevant tags from transaction description, category name, and transaction type.
+    Returns a unique comma-separated string of tags (e.g. 'Food, Cafe, UPI').
+    """
+    desc_lower = desc.lower()
+    tags = set()
+
+    for pattern, tag_list in TAG_RULES:
+        if re.search(pattern, desc_lower):
+            for t in tag_list:
+                tags.add(t)
+
+    # If UPI is in description or reference
+    if "upi" in desc_lower or "/upi/" in desc_lower or "@" in desc_lower:
+        tags.add("UPI")
+
+    # Add category-derived tags if available
+    if category_name:
+        if "Rent" in category_name:
+            tags.add("Rent")
+        elif "Lunch" in category_name or "Food" in category_name:
+            tags.add("Food")
+        elif "Commute" in category_name or "BMTC" in category_name or "Transport" in category_name:
+            tags.add("Travel")
+        elif "SIP" in category_name or "Mutual Funds" in category_name or "Stocks" in category_name:
+            tags.add("Investment")
+        elif "Emergency" in category_name or "Savings" in category_name:
+            tags.add("Savings")
+        elif "Lifestyle" in category_name:
+            tags.add("Lifestyle")
+        elif "Stipend" in category_name or "Salary" in category_name or "Family" in category_name:
+            tags.add("Income")
+
+    if not tags:
+        if tx_type == "INCOME":
+            tags.add("Income")
+        elif tx_type == "INVESTMENT":
+            tags.add("Investment")
+        elif tx_type == "SAVINGS":
+            tags.add("Savings")
+        elif tx_type == "EXPENSE":
+            tags.add("Expense")
+
+    return ", ".join(sorted(tags))
+
 def categorize_transaction_desc(desc: str) -> str:
     """
-    Categorizes a transaction based on simple regex pattern matching on the description.
+    Categorizes a transaction based on regex pattern matching on the description.
     """
     desc_lower = desc.lower()
     for category_name, keywords in CATEGORY_KEYWORDS.items():
@@ -48,30 +135,44 @@ def categorize_transaction_desc(desc: str) -> str:
 def auto_categorize_uncategorized_transactions(db: Session, user_id: int) -> int:
     """
     Finds all uncategorized transactions for the user, runs categorization rules,
-    and updates their category_id based on matched Category models.
+    auto-generates intelligent tags, and updates their category_id and tags.
+    Also updates transaction type to align with the matched category's type.
     """
-    # Load all categories for mapping
-    # We will map category names to DB IDs
     categories = db.query(Category).all()
     cat_map = {c.name: c.id for c in categories}
+    cat_type_map = {c.name: c.type for c in categories}
+    id_to_name = {c.id: c.name for c in categories}
     
-    # Check if we need to create missing standard categories
-    # (Just in case standard ones aren't initialized yet)
-    
-    # Get user transactions with no category
     accounts = db.query(Account).filter(Account.user_id == user_id).all()
     account_ids = [a.id for a in accounts]
     
-    uncategorized = db.query(Transaction).filter(
-        Transaction.account_id.in_(account_ids),
-        Transaction.category_id.is_(None)
+    # Process both uncategorized and transactions missing tags
+    txs = db.query(Transaction).filter(
+        Transaction.account_id.in_(account_ids)
     ).all()
     
     updated_count = 0
-    for tx in uncategorized:
-        guessed_name = categorize_transaction_desc(tx.description)
-        if guessed_name != "Other" and guessed_name in cat_map:
-            tx.category_id = cat_map[guessed_name]
+    for tx in txs:
+        changed = False
+        cat_name = id_to_name.get(tx.category_id, "")
+        
+        # 1. Categorize if unassigned or 'Other'
+        if not tx.category_id or cat_name == "Other":
+            guessed_name = categorize_transaction_desc(tx.description)
+            if guessed_name != "Other" and guessed_name in cat_map:
+                tx.category_id = cat_map[guessed_name]
+                tx.type = cat_type_map[guessed_name]
+                cat_name = guessed_name
+                changed = True
+        
+        # 2. Extract and assign tags if empty
+        if not tx.tags:
+            generated_tags = extract_transaction_tags(tx.description, cat_name, tx.type)
+            if generated_tags:
+                tx.tags = generated_tags
+                changed = True
+                
+        if changed:
             updated_count += 1
             
     if updated_count > 0:
@@ -188,7 +289,7 @@ def forecast_cashflow(db: Session, user_id: int) -> dict:
     Using average daily income and expense rates from the last 60 days.
     """
     accounts = db.query(Account).filter(Account.user_id == user_id).all()
-    total_current_balance = sum(a.current_balance for a in accounts)
+    total_current_balance = sum((a.current_balance for a in accounts), Decimal("0.00"))
     
     # Fetch transactions from the last 60 days to build a baseline
     sixty_days_ago = date.today() - timedelta(days=60)
@@ -197,8 +298,8 @@ def forecast_cashflow(db: Session, user_id: int) -> dict:
         Transaction.date >= sixty_days_ago
     ).all()
     
-    total_income = sum(tx.amount for tx in txs if tx.type == "INCOME")
-    total_expense = sum(tx.amount for tx in txs if tx.type in ["EXPENSE", "TAX"])
+    total_income = sum((tx.amount for tx in txs if tx.type == "INCOME"), Decimal("0.00"))
+    total_expense = sum((tx.amount for tx in txs if tx.type in ["EXPENSE", "TAX"]), Decimal("0.00"))
     
     daily_income = total_income / 60
     daily_expense = total_expense / 60
@@ -249,14 +350,25 @@ def calculate_financial_health_score(db: Session, user_id: int) -> dict:
     ).all()
     
     # Calculate monthly income & expense average
-    monthly_income = sum(tx.amount for tx in txs if tx.type == "INCOME") / 2
-    monthly_expense = sum(tx.amount for tx in txs if tx.type == "EXPENSE") / 2
-    monthly_investments = sum(tx.amount for tx in txs if tx.type == "INVESTMENT") / 2
-    monthly_savings_transfers = sum(tx.amount for tx in txs if tx.type == "SAVINGS") / 2
+    monthly_income = sum((tx.amount for tx in txs if tx.type == "INCOME"), Decimal("0.00")) / 2
+    monthly_expense = sum((tx.amount for tx in txs if tx.type == "EXPENSE"), Decimal("0.00")) / 2
+    monthly_investments = sum((tx.amount for tx in txs if tx.type == "INVESTMENT"), Decimal("0.00")) / 2
+    monthly_savings_transfers = sum((tx.amount for tx in txs if tx.type == "SAVINGS"), Decimal("0.00")) / 2
     
     if monthly_income <= 0:
         # Avoid divide by zero
-        return {"score": 50, "risk_level": "UNKNOWN", "recommendations": ["No recent income recorded. Add transactions to get your health score."]}
+        return {
+            "score": 50,
+            "risk_level": "UNKNOWN",
+            "metrics": {
+                "savings_rate_score": 0.0,
+                "emergency_fund_score": 0.0,
+                "debt_ratio_score": 0.0,
+                "investment_rate_score": 0.0,
+                "spending_discipline_score": 0.0
+            },
+            "recommendations": ["No recent income recorded. Add transactions to get your health score."]
+        }
         
     # Metric 1: Savings Rate (25% weight)
     # Savings Rate = (Income - Expense) / Income
@@ -267,12 +379,12 @@ def calculate_financial_health_score(db: Session, user_id: int) -> dict:
     # Metric 2: Emergency Fund (20% weight)
     # Calculate emergency fund total
     # Check for Account of type SAVINGS, or Goals labeled "Emergency"
-    savings_balance = sum(a.current_balance for a in accounts if a.account_type in ["SAVINGS", "WALLET"])
+    savings_balance = sum((a.current_balance for a in accounts if a.account_type in ["SAVINGS", "WALLET"]), Decimal("0.00"))
     emergency_goals = db.query(Goal).filter(
         Goal.user_id == user_id,
         Goal.name.ilike("%emergency%")
     ).all()
-    emergency_goal_funds = sum(g.current_amount for g in emergency_goals)
+    emergency_goal_funds = sum((g.current_amount for g in emergency_goals), Decimal("0.00"))
     
     total_emergency_fund = savings_balance + emergency_goal_funds
     monthly_avg_expense = max(monthly_expense, Decimal("10000.00")) # floor at 10k to prevent divide by zero issues
@@ -287,7 +399,7 @@ def calculate_financial_health_score(db: Session, user_id: int) -> dict:
         AssetLiability.user_id == user_id,
         AssetLiability.type == "LIABILITY"
     ).all()
-    total_debt = sum(l.value for l in liabilities)
+    total_debt = sum((l.value for l in liabilities), Decimal("0.00"))
     
     # Monthly debt servicing (assumed as 3% of total outstanding debt for scoring purposes if no specific loan payment is tracked)
     monthly_debt_payment = total_debt * Decimal("0.03")

@@ -16,6 +16,7 @@ class Transaction(Base):
     destination_account_id = Column(Integer, ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
     reference_number = Column(String, nullable=True, index=True)
     is_recurring = Column(Boolean, default=False, nullable=False)
+    tags = Column(String, nullable=True)  # Comma-separated tags (e.g. "Food, Cafe, UPI")
     notes = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

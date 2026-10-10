@@ -9,6 +9,7 @@ def detect_and_link_transfers(db: Session, user_id: int, days_window: int = 2) -
     Scans transactions for the user and automatically detects transfers:
     If there is a debit transaction in Account A and a credit transaction in Account B 
     of the exact same amount within `days_window`, it merges them into a single TRANSFER transaction.
+    If the destination account is of type 'SAVINGS', the transaction is designated as type 'SAVINGS' instead of 'TRANSFER'.
     Returns the number of transfers linked/deduplicated.
     """
     # Fetch all accounts for the user
@@ -17,10 +18,11 @@ def detect_and_link_transfers(db: Session, user_id: int, days_window: int = 2) -
     if not account_ids:
         return 0
 
-    # Fetch transactions that are not currently type 'TRANSFER'
+    # Fetch transactions that are not currently type 'TRANSFER' or 'SAVINGS' (with destination account)
     transactions = db.query(Transaction).filter(
         Transaction.account_id.in_(account_ids),
-        Transaction.type != "TRANSFER"
+        Transaction.type != "TRANSFER",
+        Transaction.destination_account_id.is_(None)
     ).order_by(Transaction.date.asc()).all()
     
     # Split into potential debits and credits
@@ -57,8 +59,12 @@ def detect_and_link_transfers(db: Session, user_id: int, days_window: int = 2) -
             date_diff = abs((debit.date - credit.date).days)
             if date_diff <= days_window:
                 # Found a transfer match!
-                # Convert the debit transaction to the master TRANSFER transaction
-                debit.type = "TRANSFER"
+                dest_account = db.query(Account).filter(Account.id == credit.account_id).first()
+                if dest_account and dest_account.account_type == "SAVINGS":
+                    debit.type = "SAVINGS"
+                else:
+                    debit.type = "TRANSFER"
+                    
                 debit.destination_account_id = credit.account_id
                 debit.amount = debit_amount
                 

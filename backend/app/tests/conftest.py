@@ -44,6 +44,36 @@ def db():
     session.add(user)
     session.commit()
     session.refresh(user)
+
+    # Seed master categories
+    standard_categories = [
+        ("Internship Stipend", "INCOME"),
+        ("Family Support", "INCOME"),
+        ("Salary", "INCOME"),
+        ("PG Rent & Covered Meals", "EXPENSE"),
+        ("Daily Office Lunch (Mon–Sat)", "EXPENSE"),
+        ("BMTC Bus Commute", "EXPENSE"),
+        ("Lifestyle & Personal Essentials", "EXPENSE"),
+        ("Unallocated Flex Buffer", "EXPENSE"),
+        ("Food", "EXPENSE"),
+        ("Transport", "EXPENSE"),
+        ("Shopping", "EXPENSE"),
+        ("Entertainment", "EXPENSE"),
+        ("Utilities", "EXPENSE"),
+        ("Medical", "EXPENSE"),
+        ("Education", "EXPENSE"),
+        ("Travel", "EXPENSE"),
+        ("Insurance", "EXPENSE"),
+        ("Monthly SIP Investment", "INVESTMENT"),
+        ("Emergency Fund Allocation", "SAVINGS"),
+        ("Mutual Funds", "INVESTMENT"),
+        ("Stocks", "INVESTMENT"),
+        ("Savings Transfer", "SAVINGS")
+    ]
+    for name, cat_type in standard_categories:
+        cat = Category(name=name, type=cat_type, user_id=None)
+        session.add(cat)
+    session.commit()
     
     try:
         yield session

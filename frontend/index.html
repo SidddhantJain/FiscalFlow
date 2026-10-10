@@ -117,6 +117,10 @@
                 <span class="material-symbols-outlined">calendar_today</span>
                 <span class="font-medium text-sm">Financial Year</span>
             </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#" data-tab-target="master-budget">
+                <span class="material-symbols-outlined">pie_chart</span>
+                <span class="font-medium text-sm">Master Budget</span>
+            </a>
             <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#" data-tab-target="insights">
                 <span class="material-symbols-outlined">psychology</span>
                 <span class="font-medium text-sm">AI Insights</span>
@@ -357,6 +361,24 @@
                         <option value="SAVINGS">Savings</option>
                         <option value="TRANSFER">Transfer</option>
                     </select>
+                    <!-- Tag Filter -->
+                    <select id="filter-tag" class="px-3 py-1.5 bg-surface-container-low border border-outline-variant rounded-lg text-xs focus:ring-primary focus:outline-none">
+                        <option value="">All Tags</option>
+                        <option value="Food">Food / Dining</option>
+                        <option value="Cafe">Cafe / Coffee</option>
+                        <option value="BMTC">BMTC / Commute</option>
+                        <option value="Metro">Metro / Transit</option>
+                        <option value="PG Rent">PG Rent / Housing</option>
+                        <option value="Kirana">Kirana / Groceries</option>
+                        <option value="Medical">Medical / Pharmacy</option>
+                        <option value="Lifestyle">Lifestyle & Essentials</option>
+                        <option value="SIP">SIP / Mutual Funds</option>
+                        <option value="Investment">Investments</option>
+                        <option value="Emergency Fund">Emergency Fund</option>
+                        <option value="Stipend">Stipend / Internship</option>
+                        <option value="Family Support">Family Support</option>
+                        <option value="UPI">UPI Payments</option>
+                    </select>
                 </div>
 
                 <!-- Ledger Table Card -->
@@ -369,6 +391,7 @@
                                     <th class="px-6 py-4">Merchant Description</th>
                                     <th class="px-6 py-4">Amount</th>
                                     <th class="px-6 py-4">Category</th>
+                                    <th class="px-6 py-4">Tags</th>
                                     <th class="px-6 py-4">Source Account</th>
                                     <th class="px-6 py-4">Intelligence Label</th>
                                     <th class="px-6 py-4 text-right">Action</th>
@@ -616,6 +639,191 @@
             </div>
 
             <!-- ========================================== -->
+            <!-- TAB: MASTER BUDGET (Allocations & Overgrown Tracker) -->
+            <!-- ========================================== -->
+            <div data-tab-content="master-budget" class="space-y-8 hidden">
+                <!-- Master Budget Header Banner -->
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-primary tracking-tight">Master Budget Distribution</h2>
+                            <span class="px-2.5 py-0.5 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold uppercase tracking-wider">Plan Active</span>
+                        </div>
+                        <p class="text-xs text-on-surface-variant font-medium mt-1">Live income inflows allocation model, planned targets vs actuals, and automated overgrown spending alerts.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button class="px-4 py-2 bg-surface-container border border-outline-variant hover:bg-surface-container-high rounded-lg text-xs font-bold text-primary flex items-center gap-1.5 transition-all shadow-sm active:scale-95" onclick="resetToMasterBudget()">
+                            <span class="material-symbols-outlined text-sm">restart_alt</span> Reset to Master Plan
+                        </button>
+                        <button class="px-4 py-2 bg-primary text-on-primary hover:opacity-90 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-md active:scale-95" onclick="openAddBudgetModal()">
+                            <span class="material-symbols-outlined text-sm">add_circle</span> Add Allocation
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Overgrown Alert Banner (Shown dynamically when any line item exceeds budget) -->
+                <div id="master-budget-overgrown-banner" class="hidden bg-rose-50 border-2 border-rose-300 rounded-xl p-5 shadow-sm fade-in">
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-xl animate-pulse">crisis_alert</span>
+                        </div>
+                        <div class="flex-grow">
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-extrabold text-rose-900 text-sm flex items-center gap-2">
+                                    Overgrown Budget Warning!
+                                    <span id="overgrown-count-badge" class="px-2 py-0.5 bg-rose-200 text-rose-800 rounded-full text-[10px]">1 Over Limit</span>
+                                </h3>
+                                <span class="text-[11px] font-bold text-rose-700">Immediate Attention Needed</span>
+                            </div>
+                            <p class="text-xs text-rose-800 mt-1">One or more of your allocation lines have exceeded the planned monthly threshold. Review spending strategy below.</p>
+                            <div id="overgrown-items-pills" class="flex flex-wrap gap-2 mt-3">
+                                <!-- Dynamic Overgrown Pills -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Income vs Allocations KPI Bento -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <!-- Total Available Funds -->
+                    <div class="glass-card rounded-xl p-6 relative overflow-hidden border border-outline-variant">
+                        <div class="flex justify-between items-start">
+                            <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Total Monthly Inflows</span>
+                            <span class="material-symbols-outlined text-secondary text-lg">account_balance_wallet</span>
+                        </div>
+                        <p id="mb-total-income" class="text-2xl md:text-3xl font-extrabold text-primary font-data-mono mt-2">₹31,000</p>
+                        <div class="mt-3 flex items-center justify-between text-[11px] text-on-surface-variant border-t border-outline-variant/60 pt-2">
+                            <span>Stipend: <b class="text-primary">₹25,000</b></span>
+                            <span>Family: <b class="text-primary">₹6,000</b></span>
+                        </div>
+                    </div>
+
+                    <!-- Total Planned Allocations -->
+                    <div class="glass-card rounded-xl p-6 relative overflow-hidden border border-outline-variant">
+                        <div class="flex justify-between items-start">
+                            <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Master Planned Target</span>
+                            <span class="material-symbols-outlined text-primary text-lg">assignment</span>
+                        </div>
+                        <p id="mb-total-planned" class="text-2xl md:text-3xl font-extrabold text-primary font-data-mono mt-2">₹31,000</p>
+                        <div class="mt-3 text-[11px] text-on-surface-variant border-t border-outline-variant/60 pt-2 flex justify-between">
+                            <span>Target Distribution</span>
+                            <span class="font-bold text-primary">100.0% Allocated</span>
+                        </div>
+                    </div>
+
+                    <!-- Total Actual Outflows / Allocated -->
+                    <div class="glass-card rounded-xl p-6 relative overflow-hidden border border-outline-variant">
+                        <div class="flex justify-between items-start">
+                            <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Actual Spent / Allocated</span>
+                            <span class="material-symbols-outlined text-teal-600 text-lg">pie_chart</span>
+                        </div>
+                        <p id="mb-total-actual" class="text-2xl md:text-3xl font-extrabold text-primary font-data-mono mt-2">₹0</p>
+                        <div class="mt-3 text-[11px] text-on-surface-variant border-t border-outline-variant/60 pt-2 flex justify-between">
+                            <span>Overall Burn Rate</span>
+                            <span id="mb-overall-burn" class="font-bold text-secondary">0%</span>
+                        </div>
+                    </div>
+
+                    <!-- Remaining Cash / Flex Buffer -->
+                    <div class="glass-card rounded-xl p-6 relative overflow-hidden border border-outline-variant bg-surface-container-low">
+                        <div class="flex justify-between items-start">
+                            <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Unallocated Flex Buffer</span>
+                            <span class="material-symbols-outlined text-indigo-600 text-lg">shield</span>
+                        </div>
+                        <p id="mb-flex-buffer" class="text-2xl md:text-3xl font-extrabold text-indigo-900 font-data-mono mt-2">₹1,000</p>
+                        <div class="mt-3 text-[11px] text-on-surface-variant border-t border-outline-variant/60 pt-2 flex justify-between">
+                            <span>Liquid Safety Float</span>
+                            <span class="font-bold text-indigo-700">3.2% Reserve</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Infographics & Visual Analytics Row -->
+                <div class="grid grid-cols-12 gap-6">
+                    <!-- Donut Distribution Chart Card -->
+                    <div class="col-span-12 lg:col-span-5 glass-card rounded-xl p-6 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 class="font-bold text-sm text-primary">Budget Distribution Infographic</h3>
+                                    <p class="text-xs text-on-surface-variant">Planned percentage breakdown of ₹31,000 funds.</p>
+                                </div>
+                                <span class="material-symbols-outlined text-secondary">donut_large</span>
+                            </div>
+                            <div class="flex items-center justify-center my-4">
+                                <div class="relative w-52 h-52 flex items-center justify-center">
+                                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100" id="mb-donut-svg">
+                                        <!-- SVG Donut Segments rendered by JS -->
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                                        <span class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Total Budget</span>
+                                        <span class="text-lg font-extrabold text-primary font-data-mono">₹31,000</span>
+                                        <span class="text-[9px] text-secondary font-bold">Master Plan</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Legend -->
+                        <div id="mb-donut-legend" class="grid grid-cols-2 gap-2 text-[11px] border-t border-outline-variant/60 pt-4">
+                            <!-- Dynamic legend items -->
+                        </div>
+                    </div>
+
+                    <!-- Target vs Actual Performance Bars -->
+                    <div class="col-span-12 lg:col-span-7 glass-card rounded-xl p-6 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start mb-6">
+                                <div>
+                                    <h3 class="font-bold text-sm text-primary">Target vs Actual Utilization</h3>
+                                    <p class="text-xs text-on-surface-variant">Category-by-category burn rate against planned caps.</p>
+                                </div>
+                                <span class="px-2 py-0.5 bg-surface-container rounded text-[10px] font-bold text-primary uppercase">Real-Time</span>
+                            </div>
+                            <div id="mb-progress-bars-container" class="space-y-4 text-xs">
+                                <!-- Dynamic Category Progress Bars with Overgrown Indicators -->
+                            </div>
+                        </div>
+                        <div class="mt-6 border-t border-outline-variant/60 pt-4 flex items-center justify-between text-[11px] text-on-surface-variant">
+                            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Under Budget</span>
+                            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Near Limit (>80%)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Overgrown (>100%)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Master Budget Interactive Table Card -->
+                <div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+                    <div class="p-5 bg-surface-container flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline-variant">
+                        <div>
+                            <h3 class="font-bold text-sm text-primary flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary text-base">table_chart</span> Master Budget Allocations & Strategies
+                            </h3>
+                            <p class="text-xs text-on-surface-variant mt-0.5">All target amounts, dates, and strategy notes are fully editable.</p>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left zebra-table border-collapse">
+                            <thead>
+                                <tr class="bg-surface-container-low text-on-surface-variant border-b border-outline-variant text-[11px] font-bold tracking-wider uppercase">
+                                    <th class="px-6 py-4">Line Item / Category</th>
+                                    <th class="px-6 py-4">Target Plan (₹)</th>
+                                    <th class="px-6 py-4">% of Funds</th>
+                                    <th class="px-6 py-4">Actual Spent (₹)</th>
+                                    <th class="px-6 py-4">% Used</th>
+                                    <th class="px-6 py-4">Health Status</th>
+                                    <th class="px-6 py-4">Notes & Strategy</th>
+                                    <th class="px-6 py-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="master-budget-table-body" class="divide-y divide-outline-variant text-xs">
+                                <!-- Dynamic budget rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
             <!-- TAB 4: AI INSIGHTS (Leakage and Forecasts) -->
             <!-- ========================================== -->
             <div data-tab-content="insights" class="space-y-8 hidden">
@@ -767,6 +975,10 @@
             <span class="material-symbols-outlined">calendar_today</span>
             <span class="text-[9px] font-bold tracking-wider">FY</span>
         </a>
+        <a class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 duration-100" href="#" data-mobile-tab-target="master-budget">
+            <span class="material-symbols-outlined">pie_chart</span>
+            <span class="text-[9px] font-bold tracking-wider">Budget</span>
+        </a>
         <a class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 duration-100" href="#" data-mobile-tab-target="insights">
             <span class="material-symbols-outlined">psychology</span>
             <span class="text-[9px] font-bold tracking-wider">AI Insights</span>
@@ -904,6 +1116,7 @@
                 <div>
                     <label class="block text-on-surface-variant mb-1">Bank Parser Engine Type</label>
                     <select id="import-bank" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2.5">
+                        <option value="AXIS_CSV">Axis Bank CSV Statement Parser</option>
                         <option value="HDFC_CSV">HDFC Bank CSV Statement Parser</option>
                         <option value="SBI_CSV">SBI Bank CSV Statement Parser</option>
                         <option value="DEFAULT_CSV">Standard generic CSV Statement Parser</option>
@@ -987,6 +1200,119 @@
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" class="px-4 py-2.5 border border-outline-variant rounded-lg text-primary hover:bg-surface-container-low" onclick="closeModal('add-goal-modal')">Cancel</button>
                     <button type="submit" class="px-4 py-2.5 bg-primary text-on-primary rounded-lg font-bold hover:opacity-90">Create Goal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Budget Modal -->
+    <div id="edit-budget-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-primary/40 backdrop-blur-sm px-4">
+        <div class="bg-white rounded-xl border border-outline-variant p-6 w-full max-w-md shadow-2xl relative fade-in">
+            <h3 class="text-base font-bold text-primary mb-4 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-primary">edit_note</span> Edit Budget Allocation Line
+            </h3>
+            <form id="edit-budget-form" class="space-y-4 text-xs font-medium">
+                <input id="edit-budget-id" type="hidden"/>
+                <div>
+                    <label class="block text-on-surface-variant mb-1">Line Item Name</label>
+                    <input id="edit-budget-name" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2.5" placeholder="e.g. PG Rent & Covered Meals" type="text" required/>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-on-surface-variant mb-1">Target Amount (₹)</label>
+                        <input id="edit-budget-amount" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2.5" placeholder="14000.00" type="number" step="0.01" required/>
+                    </div>
+                    <div>
+                        <label class="block text-on-surface-variant mb-1">Linked Category</label>
+                        <select id="edit-budget-category" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2.5">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-on-surface-variant mb-1">Strategy & Allocation Notes</label>
+                    <textarea id="edit-budget-notes" rows="3" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2.5" placeholder="e.g. 26 working days @ ₹100-150/day in/near Sigma Soft Tech Park"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="px-4 py-2.5 border border-outline-variant rounded-lg text-primary hover:bg-surface-container-low" onclick="closeModal('edit-budget-modal')">Cancel</button>
+                    <button type="submit" class="px-4 py-2.5 bg-primary text-on-primary rounded-lg font-bold hover:opacity-90">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Budget Allocation Modal -->
+    <div id="add-budget-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-primary/40 backdrop-blur-sm px-4">
+        <div class="bg-white rounded-xl border border-outline-variant p-6 w-full max-w-md shadow-2xl relative fade-in">
+            <h3 class="text-base font-bold text-primary mb-4 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-primary">add_chart</span> New Master Budget Line Item
+            </h3>
+            <form id="add-budget-form" class="space-y-4 text-xs font-medium">
+                <div>
+                    <label class="block text-on-surface-variant mb-1">Line Item / Allocation Name</label>
+                    <input id="add-budget-name" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2.5" placeholder="e.g. Weekend Travel Buffer" type="text" required/>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-on-surface-variant mb-1">Target Amount (₹)</label>
+                        <input id="add-budget-amount" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2.5" placeholder="2000.00" type="number" step="0.01" required/>
+                    </div>
+                    <div>
+                        <label class="block text-on-surface-variant mb-1">Category</label>
+                        <select id="add-budget-category" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2.5">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-on-surface-variant mb-1">Strategy & Allocation Notes</label>
+                    <textarea id="add-budget-notes" rows="3" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2.5" placeholder="e.g. Allocation purpose and limit details"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="px-4 py-2.5 border border-outline-variant rounded-lg text-primary hover:bg-surface-container-low" onclick="closeModal('add-budget-modal')">Cancel</button>
+                    <button type="submit" class="px-4 py-2.5 bg-primary text-on-primary rounded-lg font-bold hover:opacity-90">Add Allocation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Transaction Tag Modal -->
+    <div id="edit-tag-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-primary/40 backdrop-blur-sm px-4">
+        <div class="bg-white rounded-xl border border-outline-variant p-6 w-full max-w-md shadow-2xl relative fade-in">
+            <h3 class="text-base font-bold text-primary mb-2 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-primary">label</span> Manage Transaction Tags
+            </h3>
+            <p id="edit-tag-tx-desc" class="text-xs text-on-surface-variant mb-4 font-semibold">Swiggy Ltd</p>
+            <form id="edit-tag-form" class="space-y-4 text-xs font-medium">
+                <input id="edit-tag-tx-id" type="hidden"/>
+                <div>
+                    <label class="block text-on-surface-variant mb-1">Tags (Comma-separated)</label>
+                    <input id="edit-tag-input" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2.5 font-data-mono" placeholder="Food, Cafe, UPI, Lifestyle" type="text"/>
+                    <p class="text-[11px] text-on-surface-variant/80 mt-1">Separate multiple tags with commas. E.g.: Food, Cafe, UPI, Travel, BMTC, Rent, SIP</p>
+                </div>
+                <!-- Quick Tag Suggestion Chips -->
+                <div>
+                    <label class="block text-on-surface-variant mb-1.5 text-[11px] uppercase font-bold">Quick Tag Presets</label>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('Food')">+ Food</button>
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('Cafe')">+ Cafe</button>
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('Dining')">+ Dining</button>
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('BMTC')">+ BMTC</button>
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('Metro')">+ Metro</button>
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('Travel')">+ Travel</button>
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('PG Rent')">+ PG Rent</button>
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('Kirana')">+ Kirana</button>
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('Medical')">+ Medical</button>
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('Lifestyle')">+ Lifestyle</button>
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('SIP')">+ SIP</button>
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('Investment')">+ Investment</button>
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('Savings')">+ Savings</button>
+                        <button type="button" class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high rounded text-[11px] text-primary font-medium" onclick="appendTag('UPI')">+ UPI</button>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="px-4 py-2.5 border border-outline-variant rounded-lg text-primary hover:bg-surface-container-low" onclick="closeModal('edit-tag-modal')">Cancel</button>
+                    <button type="submit" class="px-4 py-2.5 bg-primary text-on-primary rounded-lg font-bold hover:opacity-90">Update Tags</button>
                 </div>
             </form>
         </div>

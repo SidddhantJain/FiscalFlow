@@ -1,5 +1,5 @@
 // API Base URL configuration
-const API_BASE = window.location.origin.includes('127.0.0.1') || window.location.origin.includes('localhost')
+const API_BASE = window.location.origin.includes('127.0.0.1') || window.location.origin.includes('127.0.0.2') || window.location.origin.includes('localhost')
     ? window.location.origin
     : 'http://127.0.0.1:8000';
 
@@ -10,6 +10,8 @@ const state = {
     accounts: [],
     transactions: [],
     categories: [],
+    budgets: [],
+    budgetSummary: null,
     insights: [],
     goals: [],
     subscriptions: [],
@@ -21,6 +23,7 @@ const state = {
         search: '',
         accountId: '',
         type: '',
+        tag: '',
         startDate: '',
         endDate: '',
         page: 1,
@@ -45,7 +48,9 @@ async function initApp() {
             fetchGoals(),
             fetchSubscriptions(),
             fetchForecast(),
-            fetchFYReport()
+            fetchFYReport(),
+            fetchBudgets(),
+            fetchBudgetSummary()
         ]);
         // Transactions are fetched separately as they depend on categories/accounts
         await fetchTransactions();
@@ -129,12 +134,24 @@ function setupEventListeners() {
         });
     }
 
+    const filterTag = document.getElementById('filter-tag');
+    if (filterTag) {
+        filterTag.addEventListener('change', () => {
+            state.filters.tag = filterTag.value;
+            state.filters.page = 1;
+            fetchTransactions().then(() => renderTransactionsTab());
+        });
+    }
+
     // Modal forms submissions
     document.getElementById('add-account-form')?.addEventListener('submit', handleAddAccount);
     document.getElementById('add-tx-form')?.addEventListener('submit', handleAddTransaction);
     document.getElementById('import-statement-form')?.addEventListener('submit', handleImportStatement);
     document.getElementById('add-sub-form')?.addEventListener('submit', handleAddSubscription);
     document.getElementById('add-goal-form')?.addEventListener('submit', handleAddGoal);
+    document.getElementById('edit-budget-form')?.addEventListener('submit', handleEditBudget);
+    document.getElementById('add-budget-form')?.addEventListener('submit', handleAddBudget);
+    document.getElementById('edit-tag-form')?.addEventListener('submit', handleEditTag);
     
     // Natural Language Query listeners
     const nlpInput = document.getElementById('nlp-query-input');
@@ -203,6 +220,9 @@ function renderTabContent(tabName) {
         case 'financial-year':
             renderFinancialYearTab();
             break;
+        case 'master-budget':
+            renderMasterBudgetTab();
+            break;
         case 'insights':
             renderInsightsTab();
             break;
@@ -238,11 +258,24 @@ async function fetchAccounts() {
     populateAccountDropdowns();
 }
 
+async function fetchBudgets() {
+    const res = await fetch(`${API_BASE}/budgets/`);
+    if (!res.ok) throw new Error("Budgets load failed");
+    state.budgets = await res.json();
+}
+
+async function fetchBudgetSummary() {
+    const res = await fetch(`${API_BASE}/budgets/summary`);
+    if (!res.ok) throw new Error("Budget summary load failed");
+    state.budgetSummary = await res.json();
+}
+
 async function fetchTransactions() {
     const url = new URL(`${API_BASE}/transactions/`);
     if (state.filters.search) url.searchParams.append('search', state.filters.search);
     if (state.filters.accountId) url.searchParams.append('account_id', state.filters.accountId);
     if (state.filters.type) url.searchParams.append('tx_type', state.filters.type);
+    if (state.filters.tag) url.searchParams.append('tag', state.filters.tag);
     
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error("Transactions load failed");
@@ -393,8 +426,9 @@ function renderDashboardTab() {
     }
 
     // Savings rate & Emergency fund
-    const emergencyFactor = state.healthScore.metrics.emergency_fund_score / 100 * 6.0;
-    document.getElementById('dash-savings-rate').textContent = `${(state.healthScore.metrics.savings_rate_score / 100 * 30).toFixed(0)}%`;
+    const metrics = state.healthScore.metrics || { emergency_fund_score: 0, savings_rate_score: 0 };
+    const emergencyFactor = (metrics.emergency_fund_score || 0) / 100 * 6.0;
+    document.getElementById('dash-savings-rate').textContent = `${((metrics.savings_rate_score || 0) / 100 * 30).toFixed(0)}%`;
     document.getElementById('dash-emergency-fund').textContent = `${emergencyFactor.toFixed(1)} mo`;
 
     // Render Accounts List Grid
@@ -566,7 +600,7 @@ function renderTransactionsTab() {
     if (state.transactions.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="px-6 py-12 text-center text-body-sm text-on-surface-variant">
+                <td colspan="8" class="px-6 py-12 text-center text-body-sm text-on-surface-variant">
                     No transactions match current filters. Try adding a new transaction or importing a statement.
                 </td>
             </tr>`;
@@ -589,11 +623,44 @@ function renderTransactionsTab() {
         if (tx.category) {
             let colorClasses = 'bg-gray-100 text-gray-700';
             if (isIncome) colorClasses = 'bg-emerald-100 text-emerald-700';
-            else if (tx.category.name === 'Food') colorClasses = 'bg-rose-100 text-rose-700';
-            else if (tx.category.name === 'Transport') colorClasses = 'bg-orange-100 text-orange-700';
-            else if (tx.category.name === 'Mutual Funds' || tx.category.name === 'Stocks') colorClasses = 'bg-teal-100 text-teal-700';
+            else if (tx.category.name.includes('Food') || tx.category.name.includes('Lunch')) colorClasses = 'bg-rose-100 text-rose-700';
+            else if (tx.category.name.includes('Transport') || tx.category.name.includes('Commute') || tx.category.name.includes('BMTC')) colorClasses = 'bg-orange-100 text-orange-700';
+            else if (tx.category.name.includes('Rent')) colorClasses = 'bg-blue-100 text-blue-700';
+            else if (tx.category.name.includes('SIP') || tx.category.name.includes('Mutual Funds') || tx.category.name.includes('Stocks')) colorClasses = 'bg-teal-100 text-teal-700';
+            else if (tx.category.name.includes('Emergency') || tx.category.name.includes('Savings')) colorClasses = 'bg-indigo-100 text-indigo-700';
+            else if (tx.category.name.includes('Lifestyle')) colorClasses = 'bg-purple-100 text-purple-700';
             
-            catBadge = `<span class="px-3 py-1 ${colorClasses} rounded-full font-label-caps text-[10px] tracking-wide uppercase">${tx.category.name}</span>`;
+            catBadge = `<span class="px-3 py-1 ${colorClasses} rounded-full font-label-caps text-[10px] tracking-wide uppercase font-semibold">${tx.category.name}</span>`;
+        }
+
+        // Tags Badge rendering
+        let tagsHtml = '';
+        if (tx.tags && tx.tags.trim()) {
+            const tagList = tx.tags.split(',').map(t => t.trim()).filter(Boolean);
+            tagsHtml = '<div class="flex flex-wrap gap-1 items-center">';
+            tagList.forEach(tg => {
+                let tagColor = 'bg-surface-container text-on-surface-variant border-outline-variant';
+                if (tg.toLowerCase() === 'food' || tg.toLowerCase() === 'cafe' || tg.toLowerCase() === 'dining') tagColor = 'bg-amber-50 text-amber-800 border-amber-200';
+                else if (tg.toLowerCase() === 'bmtc' || tg.toLowerCase() === 'metro' || tg.toLowerCase() === 'travel') tagColor = 'bg-blue-50 text-blue-800 border-blue-200';
+                else if (tg.toLowerCase() === 'pg rent' || tg.toLowerCase() === 'rent' || tg.toLowerCase() === 'housing') tagColor = 'bg-violet-50 text-violet-800 border-violet-200';
+                else if (tg.toLowerCase() === 'kirana' || tg.toLowerCase() === 'groceries' || tg.toLowerCase() === 'lifestyle') tagColor = 'bg-purple-50 text-purple-800 border-purple-200';
+                else if (tg.toLowerCase() === 'sip' || tg.toLowerCase() === 'investment') tagColor = 'bg-teal-50 text-teal-800 border-teal-200';
+                else if (tg.toLowerCase() === 'emergency fund' || tg.toLowerCase() === 'savings') tagColor = 'bg-cyan-50 text-cyan-800 border-cyan-200';
+                else if (tg.toLowerCase() === 'stipend' || tg.toLowerCase() === 'salary' || tg.toLowerCase() === 'family support' || tg.toLowerCase() === 'income') tagColor = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+                else if (tg.toLowerCase() === 'upi') tagColor = 'bg-sky-50 text-sky-800 border-sky-200';
+                
+                tagsHtml += `<span class="px-2 py-0.5 rounded text-[10px] font-medium border ${tagColor}">#${tg}</span>`;
+            });
+            tagsHtml += `
+                <button class="material-symbols-outlined text-[14px] text-outline hover:text-primary transition-colors p-0.5" title="Edit Tags" onclick="openEditTagModal(${tx.id}, '${escapeJsQuotes(tx.tags)}', '${escapeJsQuotes(tx.description)}')">
+                    edit
+                </button>
+            </div>`;
+        } else {
+            tagsHtml = `
+                <button class="px-2 py-0.5 border border-dashed border-outline-variant hover:border-primary rounded text-[10px] text-on-surface-variant hover:text-primary transition-colors flex items-center gap-0.5" onclick="openEditTagModal(${tx.id}, '', '${escapeJsQuotes(tx.description)}')">
+                    <span class="material-symbols-outlined text-[12px]">add</span> Add Tag
+                </button>`;
         }
 
         // Intelligence Label display
@@ -624,19 +691,20 @@ function renderTransactionsTab() {
 
         tbody.innerHTML += `
             <tr class="hover:bg-surface-container-low transition-colors duration-200">
-                <td class="px-6 py-4 font-data-mono text-data-mono">${txDate}</td>
+                <td class="px-6 py-4 font-data-mono text-data-mono whitespace-nowrap">${txDate}</td>
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-2">
                         <span class="font-body-md font-semibold text-primary">${tx.description}</span>
                         ${tx.category_id ? '<span class="material-symbols-outlined text-secondary text-sm" title="AI Categorized">psychology</span>' : ''}
                     </div>
                 </td>
-                <td class="px-6 py-4 font-data-mono text-data-mono ${amtClass} font-bold">${prefix}${fmt.format(tx.amount)}</td>
-                <td class="px-6 py-4">${catBadge}</td>
-                <td class="px-6 py-4 font-body-sm text-on-surface-variant">${accountText}</td>
-                <td class="px-6 py-4">${intelligenceLabel}</td>
-                <td class="px-6 py-4 text-right">
-                    <button class="material-symbols-outlined text-outline hover:text-error transition-colors" onclick="deleteTransaction(${tx.id})">delete</button>
+                <td class="px-6 py-4 font-data-mono text-data-mono ${amtClass} font-bold whitespace-nowrap">${prefix}${fmt.format(tx.amount)}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${catBadge}</td>
+                <td class="px-6 py-4">${tagsHtml}</td>
+                <td class="px-6 py-4 font-body-sm text-on-surface-variant whitespace-nowrap">${accountText}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${intelligenceLabel}</td>
+                <td class="px-6 py-4 text-right whitespace-nowrap">
+                    <button class="material-symbols-outlined text-outline hover:text-error transition-colors text-[18px]" onclick="deleteTransaction(${tx.id})">delete</button>
                 </td>
             </tr>`;
     });
@@ -1329,55 +1397,436 @@ window.closeModal = function(id) {
     }
 };
 
-function showLoading(show) {
-    const spinner = document.getElementById('loading-indicator');
-    if (spinner) {
-        if (show) spinner.classList.remove('hidden');
-        else spinner.classList.add('hidden');
+function escapeJsQuotes(str) {
+    if (!str) return '';
+    return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// ==========================================
+// MASTER BUDGET TAB & ANALYTICS RENDERER
+// ==========================================
+
+const MASTER_BUDGET_COLORS = [
+    '#4f46e5', // Rent - Indigo
+    '#f59e0b', // Lunch - Amber
+    '#3b82f6', // Commute - Blue
+    '#8b5cf6', // Lifestyle - Purple
+    '#06b6d4', // Emergency - Cyan
+    '#10b981', // SIP - Emerald
+    '#64748b', // Flex Buffer - Slate
+    '#ec4899', // Pink
+    '#14b8a6'  // Teal
+];
+
+async function renderMasterBudgetTab() {
+    const fmt = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+    
+    // Always refresh budget summary to get live spent data
+    try {
+        await fetchBudgetSummary();
+        await fetchBudgets();
+    } catch (e) {
+        console.error("Error fetching budget summary: ", e);
+    }
+
+    const summary = state.budgetSummary || {
+        planned_income: 31000,
+        income_breakdown: { "Internship Stipend": 25000, "Family Support": 6000 },
+        total_planned_allocation: 31000,
+        total_actual_spent: 0,
+        total_remaining: 31000,
+        items: [],
+        overgrown_count: 0,
+        overgrown_items: []
+    };
+
+    // 1. KPI Cards
+    const incEl = document.getElementById('mb-total-income');
+    const planEl = document.getElementById('mb-total-planned');
+    const actEl = document.getElementById('mb-total-actual');
+    const flexEl = document.getElementById('mb-flex-buffer');
+    const burnEl = document.getElementById('mb-overall-burn');
+
+    if (incEl) incEl.textContent = fmt.format(summary.planned_income);
+    if (planEl) planEl.textContent = fmt.format(summary.total_planned_allocation);
+    if (actEl) actEl.textContent = fmt.format(summary.total_actual_spent);
+    if (flexEl) flexEl.textContent = fmt.format(summary.total_remaining);
+    
+    if (burnEl) {
+        const burnPct = summary.planned_income > 0 
+            ? ((summary.total_actual_spent / summary.planned_income) * 100).toFixed(1) 
+            : 0;
+        burnEl.textContent = `${burnPct}% Burned`;
+    }
+
+    // 2. Overgrown Alert Banner
+    const banner = document.getElementById('master-budget-overgrown-banner');
+    const countBadge = document.getElementById('overgrown-count-badge');
+    const pillsContainer = document.getElementById('overgrown-items-pills');
+
+    if (banner && countBadge && pillsContainer) {
+        if (summary.overgrown_count > 0) {
+            banner.classList.remove('hidden');
+            countBadge.textContent = `${summary.overgrown_count} Line${summary.overgrown_count > 1 ? 's' : ''} Exceeded`;
+            pillsContainer.innerHTML = '';
+            summary.overgrown_items.forEach(item => {
+                const overspend = item.spent - item.amount;
+                pillsContainer.innerHTML += `
+                    <div class="px-3 py-1.5 bg-rose-100 border border-rose-300 rounded-lg text-xs flex items-center gap-2 font-semibold text-rose-900">
+                        <span class="material-symbols-outlined text-sm text-rose-700">warning</span>
+                        <span>${item.name}: Target <b>${fmt.format(item.amount)}</b> | Spent <b>${fmt.format(item.spent)}</b> (<span class="text-rose-700 font-bold">+${fmt.format(overspend)} over</span>)</span>
+                    </div>`;
+            });
+        } else {
+            banner.classList.add('hidden');
+        }
+    }
+
+    // 3. Render Visual Donut Chart
+    renderMasterBudgetDonut(summary);
+
+    // 4. Render Target vs Actual Progress Bars
+    renderMasterBudgetProgressBars(summary);
+
+    // 5. Render Master Budget Table
+    renderMasterBudgetTable(summary);
+}
+
+function renderMasterBudgetDonut(summary) {
+    const svg = document.getElementById('mb-donut-svg');
+    const legend = document.getElementById('mb-donut-legend');
+    if (!svg || !legend) return;
+
+    svg.innerHTML = '';
+    legend.innerHTML = '';
+
+    const items = summary.items || [];
+    if (items.length === 0) {
+        svg.innerHTML = `<circle cx="50" cy="50" r="38" fill="transparent" stroke="#e2e8f0" stroke-width="14"></circle>`;
+        legend.innerHTML = `<div class="col-span-2 text-center text-on-surface-variant text-xs">No allocations found. Click 'Reset to Master Plan' to initialize.</div>`;
+        return;
+    }
+
+    const totalTarget = summary.total_planned_allocation || 31000;
+    const circumference = 2 * Math.PI * 38; // radius = 38 => ~238.76
+    let accumulatedPercent = 0;
+
+    const fmt = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+
+    items.forEach((item, index) => {
+        const color = MASTER_BUDGET_COLORS[index % MASTER_BUDGET_COLORS.length];
+        const percent = (item.amount / totalTarget);
+        const strokeDash = percent * circumference;
+        const strokeOffset = -accumulatedPercent * circumference;
+
+        // SVG Circle segment
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("cx", "50");
+        circle.setAttribute("cy", "50");
+        circle.setAttribute("r", "38");
+        circle.setAttribute("fill", "transparent");
+        circle.setAttribute("stroke", color);
+        circle.setAttribute("stroke-width", "14");
+        circle.setAttribute("stroke-dasharray", `${strokeDash} ${circumference - strokeDash}`);
+        circle.setAttribute("stroke-dashoffset", strokeOffset);
+        circle.setAttribute("class", "transition-all duration-500 hover:opacity-80 cursor-pointer");
+        
+        const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        title.textContent = `${item.name}: ${fmt.format(item.amount)} (${(percent * 100).toFixed(1)}%)`;
+        circle.appendChild(title);
+        
+        svg.appendChild(circle);
+
+        // Legend Item
+        legend.innerHTML += `
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${color}"></span>
+                <span class="truncate text-primary font-medium" title="${item.name}">${item.name}</span>
+                <span class="ml-auto font-data-mono font-bold text-on-surface-variant">${(percent * 100).toFixed(1)}%</span>
+            </div>`;
+
+        accumulatedPercent += percent;
+    });
+}
+
+function renderMasterBudgetProgressBars(summary) {
+    const container = document.getElementById('mb-progress-bars-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+    const items = summary.items || [];
+    if (items.length === 0) {
+        container.innerHTML = `<p class="py-4 text-center text-on-surface-variant text-xs">No budget lines configured.</p>`;
+        return;
+    }
+
+    const fmt = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+
+    items.forEach(item => {
+        const pct = item.percent_used || 0;
+        const cappedWidth = Math.min(100, pct);
+        
+        let barColor = 'bg-emerald-500';
+        let statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800 font-bold">Healthy (${pct}%)</span>`;
+        
+        if (item.is_overgrown) {
+            barColor = 'bg-rose-500 animate-pulse';
+            statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-rose-100 text-rose-800 font-bold border border-rose-300">OVERGROWN (${pct}%)</span>`;
+        } else if (pct >= 80) {
+            barColor = 'bg-amber-500';
+            statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-amber-100 text-amber-800 font-bold">Near Cap (${pct}%)</span>`;
+        }
+
+        container.innerHTML += `
+            <div>
+                <div class="flex justify-between items-center mb-1.5">
+                    <span class="font-bold text-primary">${item.name}</span>
+                    <div class="flex items-center gap-2">
+                        ${statusBadge}
+                        <span class="font-data-mono font-bold text-primary">${fmt.format(item.spent)} / <span class="text-on-surface-variant font-normal">${fmt.format(item.amount)}</span></span>
+                    </div>
+                </div>
+                <div class="w-full bg-surface-container h-2.5 rounded-full overflow-hidden">
+                    <div class="${barColor} h-full rounded-full transition-all duration-500" style="width: ${cappedWidth}%"></div>
+                </div>
+            </div>`;
+    });
+}
+
+function renderMasterBudgetTable(summary) {
+    const tbody = document.getElementById('master-budget-table-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    const items = summary.items || [];
+    if (items.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="px-6 py-8 text-center text-on-surface-variant text-xs">
+                    No budget allocations active. Click 'Reset to Master Plan' to populate your master budget.
+                </td>
+            </tr>`;
+        return;
+    }
+
+    const fmt = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+    const totalFunds = summary.planned_income || 31000;
+
+    items.forEach(item => {
+        const shareOfFunds = ((item.amount / totalFunds) * 100).toFixed(1);
+        const isOver = item.is_overgrown;
+        
+        let statusBadge = `
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 w-fit">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> In Budget
+            </span>`;
+            
+        if (isOver) {
+            const overAmt = item.spent - item.amount;
+            statusBadge = `
+                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-300 flex items-center gap-1 w-fit">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span> Overgrown (+${fmt.format(overAmt)})
+                </span>`;
+        }
+
+        tbody.innerHTML += `
+            <tr class="hover:bg-surface-container-low transition-colors duration-200 ${isOver ? 'bg-rose-50/40' : ''}">
+                <td class="px-6 py-4 font-semibold text-primary">
+                    <div class="flex items-center gap-2">
+                        <span>${item.name}</span>
+                    </div>
+                </td>
+                <td class="px-6 py-4 font-data-mono font-bold text-primary whitespace-nowrap">${fmt.format(item.amount)}</td>
+                <td class="px-6 py-4 font-data-mono font-medium text-on-surface-variant whitespace-nowrap">${shareOfFunds}%</td>
+                <td class="px-6 py-4 font-data-mono font-bold ${isOver ? 'text-rose-600' : 'text-primary'} whitespace-nowrap">${fmt.format(item.spent)}</td>
+                <td class="px-6 py-4 font-data-mono font-bold whitespace-nowrap ${isOver ? 'text-rose-600' : 'text-secondary'}">${item.percent_used}%</td>
+                <td class="px-6 py-4 whitespace-nowrap">${statusBadge}</td>
+                <td class="px-6 py-4 text-on-surface-variant text-[11px] max-w-xs">${item.notes || '—'}</td>
+                <td class="px-6 py-4 text-right whitespace-nowrap">
+                    <button class="material-symbols-outlined text-outline hover:text-primary transition-colors text-[18px] mr-2" title="Edit Allocation" onclick="openEditBudgetModal(${item.id})">
+                        edit
+                    </button>
+                    <button class="material-symbols-outlined text-outline hover:text-error transition-colors text-[18px]" title="Delete Allocation" onclick="deleteBudgetItem(${item.id})">
+                        delete
+                    </button>
+                </td>
+            </tr>`;
+    });
+}
+
+// Modal & Budget Operations
+window.openEditBudgetModal = function(budgetId) {
+    const item = (state.budgetSummary?.items || []).find(b => b.id === budgetId) || state.budgets.find(b => b.id === budgetId);
+    if (!item) {
+        showToast("Budget allocation not found", "error");
+        return;
+    }
+
+    document.getElementById('edit-budget-id').value = item.id;
+    document.getElementById('edit-budget-name').value = item.name || '';
+    document.getElementById('edit-budget-amount').value = item.amount || '';
+    document.getElementById('edit-budget-notes').value = item.notes || '';
+
+    // Populate category dropdown
+    const catSel = document.getElementById('edit-budget-category');
+    if (catSel) {
+        catSel.innerHTML = '';
+        state.categories.forEach(c => {
+            const selected = c.id === item.category_id ? 'selected' : '';
+            catSel.innerHTML += `<option value="${c.id}" ${selected}>${c.name} (${c.type})</option>`;
+        });
+    }
+
+    openModal('edit-budget-modal');
+};
+
+window.openAddBudgetModal = function() {
+    const catSel = document.getElementById('add-budget-category');
+    if (catSel) {
+        catSel.innerHTML = '';
+        state.categories.forEach(c => {
+            catSel.innerHTML += `<option value="${c.id}">${c.name} (${c.type})</option>`;
+        });
+    }
+    document.getElementById('add-budget-form')?.reset();
+    openModal('add-budget-modal');
+};
+
+async function handleEditBudget(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-budget-id').value;
+    const name = document.getElementById('edit-budget-name').value;
+    const amount = parseFloat(document.getElementById('edit-budget-amount').value);
+    const category_id = parseInt(document.getElementById('edit-budget-category').value);
+    const notes = document.getElementById('edit-budget-notes').value;
+
+    try {
+        showLoading(true);
+        const res = await fetch(`${API_BASE}/budgets/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, amount, category_id, notes })
+        });
+        if (!res.ok) throw new Error("Failed to update budget");
+        
+        closeModal('edit-budget-modal');
+        showToast("Budget allocation updated successfully!", "success");
+        await renderMasterBudgetTab();
+    } catch (err) {
+        showToast("Error: " + err.message, "error");
+    } finally {
+        showLoading(false);
     }
 }
 
-function showToast(msg, type = 'info') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    
-    const toast = document.createElement('div');
-    let color = 'bg-primary text-white';
-    if (type === 'success') color = 'bg-secondary text-white';
-    if (type === 'error') color = 'bg-error text-white font-bold';
-    
-    toast.className = `px-6 py-3 rounded-lg shadow-lg ${color} transition-all duration-300 transform translate-y-2 opacity-0 flex items-center gap-2`;
-    toast.innerHTML = `
-        <span class="material-symbols-outlined text-md">info</span>
-        <span class="text-body-sm font-medium">${msg}</span>`;
-    
-    container.appendChild(toast);
-    
-    // Animate in
-    setTimeout(() => {
-        toast.classList.remove('translate-y-2', 'opacity-0');
-    }, 10);
-    
-    // Remove after 3.5s
-    setTimeout(() => {
-        toast.classList.add('translate-y-2', 'opacity-0');
-        setTimeout(() => {
-            toast.remove();
-        }, 300);
-    }, 3500);
-}
-// Trigger manual refresh for insights
-window.refreshInsightsList = async function() {
+async function handleAddBudget(e) {
+    e.preventDefault();
+    const name = document.getElementById('add-budget-name').value;
+    const amount = parseFloat(document.getElementById('add-budget-amount').value);
+    const category_id = parseInt(document.getElementById('add-budget-category').value);
+    const notes = document.getElementById('add-budget-notes').value;
+
+    const today = new Date();
+    const startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+    const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+
     try {
         showLoading(true);
-        const res = await fetch(`${API_BASE}/insights/refresh`, { method: 'POST' });
-        if (!res.ok) throw new Error("Heuristic execution failed");
-        state.insights = await res.json();
-        showToast("Intelligence parameters scanned. Insights up to date.", "success");
-        renderAll();
+        const res = await fetch(`${API_BASE}/budgets/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                amount,
+                category_id,
+                notes,
+                start_date: startDate,
+                end_date: endDate
+            })
+        });
+        if (!res.ok) throw new Error("Failed to add budget line item");
+
+        closeModal('add-budget-modal');
+        showToast("New allocation created successfully!", "success");
+        await renderMasterBudgetTab();
     } catch (err) {
-        showToast("Refresh error: " + err.message, "error");
+        showToast("Error: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+window.resetToMasterBudget = async function() {
+    try {
+        showLoading(true);
+        const res = await fetch(`${API_BASE}/budgets/reset-master`, { method: 'POST' });
+        if (!res.ok) throw new Error("Failed to reset master budget");
+        showToast("Master Budget template restored (₹31,000 Total Cash Flow)!", "success");
+        await renderMasterBudgetTab();
+    } catch (err) {
+        showToast("Reset error: " + err.message, "error");
     } finally {
         showLoading(false);
     }
 };
+
+window.deleteBudgetItem = async function(budgetId) {
+    if (!confirm("Are you sure you want to remove this budget allocation line?")) return;
+    try {
+        showLoading(true);
+        const res = await fetch(`${API_BASE}/budgets/${budgetId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error("Failed to delete budget");
+        showToast("Budget allocation removed.", "success");
+        await renderMasterBudgetTab();
+    } catch (err) {
+        showToast("Delete error: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+};
+
+// ==========================================
+// TRANSACTION TAG OPERATIONS
+// ==========================================
+
+window.openEditTagModal = function(txId, currentTags, desc) {
+    document.getElementById('edit-tag-tx-id').value = txId;
+    document.getElementById('edit-tag-input').value = currentTags || '';
+    document.getElementById('edit-tag-tx-desc').textContent = desc || 'Transaction Entry';
+    openModal('edit-tag-modal');
+};
+
+window.appendTag = function(tag) {
+    const input = document.getElementById('edit-tag-input');
+    if (!input) return;
+    const current = input.value.split(',').map(t => t.trim()).filter(Boolean);
+    if (!current.includes(tag)) {
+        current.push(tag);
+        input.value = current.join(', ');
+    }
+};
+
+async function handleEditTag(e) {
+    e.preventDefault();
+    const txId = document.getElementById('edit-tag-tx-id').value;
+    const tags = document.getElementById('edit-tag-input').value.trim();
+
+    try {
+        showLoading(true);
+        const res = await fetch(`${API_BASE}/transactions/${txId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tags })
+        });
+        if (!res.ok) throw new Error("Failed to update transaction tags");
+
+        closeModal('edit-tag-modal');
+        showToast("Transaction tags updated successfully!", "success");
+        await fetchTransactions();
+        renderTransactionsTab();
+    } catch (err) {
+        showToast("Error updating tags: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}

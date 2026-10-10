@@ -30,8 +30,26 @@ BANK_TEMPLATES = {
         "credit_col": "Credit",
         "ref_col": "Ref No./Cheque No.",
         "date_format": "%d %b %Y"
+    },
+    "AXIS_CSV": {
+        "date_col": "Tran Date",
+        "desc_col": "PARTICULARS",
+        "debit_col": "DR",
+        "credit_col": "CR",
+        "ref_col": "CHQNO",
+        "date_format": "%d-%m-%Y"
     }
 }
+
+def clean_decimal(val) -> Decimal:
+    """Helper to safely parse decimal values from bank statement columns."""
+    val_str = str(val).strip().replace(",", "")
+    if not val_str or val_str.lower() in ("nan", "-", "--", "nil", "none"):
+        return Decimal("0.00")
+    try:
+        return Decimal(val_str)
+    except Exception:
+        return Decimal("0.00")
 
 def parse_statement(file_bytes: bytes, file_name: str, bank_type: str = "DEFAULT_CSV") -> list[dict]:
     """
@@ -41,7 +59,8 @@ def parse_statement(file_bytes: bytes, file_name: str, bank_type: str = "DEFAULT
     
     # Read file bytes into pandas DataFrame
     if file_name.endswith(".xlsx") or file_name.endswith(".xls"):
-        df = pd.read_excel(io.BytesIO(file_bytes))
+        engine = "xlrd" if file_name.endswith(".xls") else "openpyxl"
+        df = pd.read_excel(io.BytesIO(file_bytes), engine=engine)
     else:
         df = pd.read_csv(io.BytesIO(file_bytes))
         
@@ -73,11 +92,8 @@ def parse_statement(file_bytes: bytes, file_name: str, bank_type: str = "DEFAULT
             
             # Check for double-column layouts (Withdrawal vs Deposit or Debit vs Credit)
             if "withdrawal_col" in template and template["withdrawal_col"] in row:
-                w_val = str(row.get(template["withdrawal_col"], "0")).strip().replace(",", "")
-                d_val = str(row.get(template["deposit_col"], "0")).strip().replace(",", "")
-                
-                w_amt = Decimal(w_val) if w_val and w_val.lower() != "nan" else Decimal("0.00")
-                d_amt = Decimal(d_val) if d_val and d_val.lower() != "nan" else Decimal("0.00")
+                w_amt = clean_decimal(row.get(template["withdrawal_col"], 0))
+                d_amt = clean_decimal(row.get(template["deposit_col"], 0))
                 
                 if w_amt > 0:
                     amount = w_amt
@@ -88,11 +104,8 @@ def parse_statement(file_bytes: bytes, file_name: str, bank_type: str = "DEFAULT
                 else:
                     continue  # Skip rows with no values
             elif "debit_col" in template and template["debit_col"] in row:
-                w_val = str(row.get(template["debit_col"], "0")).strip().replace(",", "")
-                d_val = str(row.get(template["credit_col"], "0")).strip().replace(",", "")
-                
-                w_amt = Decimal(w_val) if w_val and w_val.lower() != "nan" else Decimal("0.00")
-                d_amt = Decimal(d_val) if d_val and d_val.lower() != "nan" else Decimal("0.00")
+                w_amt = clean_decimal(row.get(template["debit_col"], 0))
+                d_amt = clean_decimal(row.get(template["credit_col"], 0))
                 
                 if w_amt > 0:
                     amount = w_amt
@@ -104,8 +117,7 @@ def parse_statement(file_bytes: bytes, file_name: str, bank_type: str = "DEFAULT
                     continue
             else:
                 # Single column amount layout
-                raw_amount = str(row.get(template["amount_col"], "0")).strip().replace(",", "")
-                val = Decimal(raw_amount)
+                val = clean_decimal(row.get(template["amount_col"], 0))
                 if val < 0:
                     amount = abs(val)
                     tx_type = "EXPENSE"
