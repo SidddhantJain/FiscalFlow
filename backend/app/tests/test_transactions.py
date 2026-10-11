@@ -204,3 +204,109 @@ def test_axis_csv_statement_import_parsing():
         assert parsed[1]["amount"] == 10000.00
         assert parsed[1]["type"] == "EXPENSE"
         assert parsed[1]["reference_number"] is None
+
+
+def test_import_statement_with_preamble_and_auto_detect(client):
+    """Verifies that bank statements with preamble/metadata header rows are parsed seamlessly."""
+    acc_res = client.post("/accounts/", json={
+        "name": "SBI Savings",
+        "bank_name": "State Bank of India",
+        "account_type": "SAVINGS",
+        "opening_balance": 5000.00
+    })
+    account_id = acc_res.json()["id"]
+
+    csv_content = (
+        "State Bank of India\n"
+        "Account Statement for Period 01-10-2024 to 31-10-2024\n"
+        "Account Number: 9876543210\n"
+        "Branch: Bangalore Main\n"
+        "Txn Date,Description,Ref No./Cheque No.,Debit,Credit,Balance\n"
+        "01-10-2024,Stipend Sigma Park,REF101,-,25000.00,30000.00\n"
+        "02-10-2024,PG Rent Stanza Living,REF102,14000.00,-,16000.00\n"
+    ).encode("utf-8")
+
+    res = client.post(
+        "/transactions/import",
+        data={"account_id": account_id, "bank_type": "AUTO_DETECT"},
+        files={"file": ("sbi_statement.csv", csv_content, "text/csv")}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert "Successfully parsed 2 transactions" in data["message"]
+    assert data["transaction_count"] == 2
+
+
+def test_import_statement_with_iso_8859_encoding(client):
+    """Verifies that statements with Latin1 / ISO-8859 non-UTF8 bytes do not raise UnicodeDecodeError."""
+    acc_res = client.post("/accounts/", json={
+        "name": "HDFC Test",
+        "bank_name": "HDFC",
+        "account_type": "CURRENT",
+        "opening_balance": 10000.00
+    })
+    account_id = acc_res.json()["id"]
+
+    # Contains byte \xa3 (British Pound) or \x80 (Euro) in Latin1
+    latin1_csv = (
+        "Date,Description,Amount,Reference\n"
+        "2024-10-01,Office Lunch Cafe \xa3,150.00,REF_LUNCH\n"
+        "2024-10-02,Consulting Bonus,2000.00,REF_BONUS\n"
+    ).encode("iso-8859-1")
+
+    res = client.post(
+        "/transactions/import",
+        data={"account_id": account_id, "bank_type": "DEFAULT_CSV"},
+        files={"file": ("export_latin1.csv", latin1_csv, "text/csv")}
+    )
+    assert res.status_code == 200
+    assert res.json()["transaction_count"] == 2
+
+
+def test_import_statement_html_as_xls(client):
+    """Verifies that Netbanking HTML tables exported with .xls extension parse properly."""
+    acc_res = client.post("/accounts/", json={
+        "name": "Axis Netbanking",
+        "bank_name": "Axis Bank",
+        "account_type": "SAVINGS",
+        "opening_balance": 2000.00
+    })
+    account_id = acc_res.json()["id"]
+
+    html_xls = (
+        "<html><body>"
+        "<table border='1'>"
+        "<tr><th>Tran Date</th><th>CHQNO</th><th>PARTICULARS</th><th>DR</th><th>CR</th><th>BAL</th></tr>"
+        "<tr><td>01-10-2024</td><td>-</td><td>Sigma Soft Tech Park Stipend</td><td></td><td>25000.00</td><td>27000.00</td></tr>"
+        "<tr><td>05-10-2024</td><td>CHQ01</td><td>Daily Office Lunch</td><td>150.00</td><td></td><td>26850.00</td></tr>"
+        "</table>"
+        "</body></html>"
+    ).encode("utf-8")
+
+    res = client.post(
+        "/transactions/import",
+        data={"account_id": account_id, "bank_type": "AXIS_CSV"},
+        files={"file": ("axis_download.xls", html_xls, "application/vnd.ms-excel")}
+    )
+    assert res.status_code == 200
+    assert res.json()["transaction_count"] == 2
+
+
+def test_import_statement_empty_file_rejected(client):
+    """Verifies that empty file uploads return a clear, user-friendly 400 Bad Request."""
+    acc_res = client.post("/accounts/", json={
+        "name": "Check Acc",
+        "bank_name": "Bank",
+        "account_type": "SAVINGS",
+        "opening_balance": 100.00
+    })
+    account_id = acc_res.json()["id"]
+
+    res = client.post(
+        "/transactions/import",
+        data={"account_id": account_id, "bank_type": "AUTO_DETECT"},
+        files={"file": ("empty.csv", b"", "text/csv")}
+    )
+    assert res.status_code == 400
+    assert "Uploaded statement file is empty" in res.json()["detail"]
+

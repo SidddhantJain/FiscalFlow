@@ -169,7 +169,7 @@ def delete_transaction(tx_id: int, db: Session = Depends(get_db), user_id: int =
 @router.post("/import", status_code=status.HTTP_200_OK)
 async def import_statement(
     account_id: int = Form(...),
-    bank_type: str = Form("DEFAULT_CSV"),
+    bank_type: str = Form("AUTO_DETECT"),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     user_id: int = Depends(get_default_user_id)
@@ -177,17 +177,58 @@ async def import_statement(
     # Verify account
     account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
     if not account:
-        raise HTTPException(status_code=404, detail="Account not found")
+        raise HTTPException(status_code=404, detail="Selected account was not found.")
         
     file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded statement file is empty.")
+        
+    # Check if this is a Demat holding/trading statement or Demat bank_type
+    is_demat_req = bank_type in ("GROWW_DEMAT", "ANGELONE_DEMAT", "ZERODHA_DEMAT", "GENERIC_DEMAT")
     
     try:
+        if is_demat_req:
+            from app.services.statement_import import import_demat_holdings
+            demat_res = import_demat_holdings(db, user_id, account_id, file_bytes, file.filename, broker_type=bank_type)
+            imported_count = demat_res.get("imported_transactions", 0)
+            holdings_count = demat_res.get("imported_holdings", 0)
+            
+            # Persist the raw statement file locally
+            saved_filename = f"{int(time.time())}_{file.filename.replace(' ', '_')}"
+            saved_filepath = os.path.join(UPLOAD_DIR, saved_filename)
+            with open(saved_filepath, "wb") as f_out:
+                f_out.write(file_bytes)
+                
+            stmt_record = StatementFile(
+                user_id=user_id,
+                account_id=account_id,
+                filename=file.filename,
+                saved_filename=saved_filename,
+                file_size=len(file_bytes),
+                bank_type=bank_type,
+                transaction_count=imported_count + holdings_count
+            )
+            db.add(stmt_record)
+            db.commit()
+            
+            return {
+                "message": f"Successfully parsed {holdings_count} portfolio holdings and {imported_count} transactions.",
+                "statement_id": stmt_record.id,
+                "filename": file.filename,
+                "holdings_count": holdings_count,
+                "transaction_count": imported_count,
+                "imported_count": imported_count
+            }
+            
         parsed_txs = parse_statement(file_bytes, file.filename, bank_type)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse statement: {str(e)}")
         
     if not parsed_txs:
-        return {"message": "No valid transactions parsed from statement."}
+        raise HTTPException(
+            status_code=400, 
+            detail="No valid transactions could be parsed from this file. Please ensure the file contains valid dates, descriptions, and amounts."
+        )
         
     # Persist the raw bank statement file locally
     saved_filename = f"{int(time.time())}_{file.filename.replace(' ', '_')}"
@@ -218,7 +259,8 @@ async def import_statement(
         "message": f"Successfully parsed {len(parsed_txs)} transactions and imported {imported} new records.",
         "statement_id": stmt_record.id,
         "filename": file.filename,
-        "transaction_count": len(parsed_txs)
+        "transaction_count": len(parsed_txs),
+        "imported_count": imported
     }
 
 @router.post("/detect-transfers", status_code=status.HTTP_200_OK)

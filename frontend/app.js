@@ -1386,6 +1386,11 @@ async function handleImportStatement(e) {
     const bank_type = document.getElementById('import-bank').value;
     const fileInput = document.getElementById('import-file');
     
+    if (!account_id) {
+        showToast("Please select a target account before importing statement.", "error");
+        return;
+    }
+
     if (fileInput.files.length === 0) {
         showToast("Please choose a statement file to upload.", "error");
         return;
@@ -1403,7 +1408,10 @@ async function handleImportStatement(e) {
             body: formData
         });
         
-        if (!res.ok) throw new Error("File upload failed");
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || `Upload failed (Status ${res.status})`);
+        }
         const data = await res.json();
         
         showToast(data.message || "Statement imported successfully!", "success");
@@ -1413,6 +1421,7 @@ async function handleImportStatement(e) {
         await Promise.all([
             fetchTransactions(),
             fetchAccounts(),
+            typeof fetchInvestments === 'function' ? fetchInvestments() : Promise.resolve(),
             fetchNetWorth(),
             fetchHealthScore(),
             fetchForecast(),

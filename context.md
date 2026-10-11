@@ -196,3 +196,23 @@ backend\.venv\Scripts\python.exe -m pytest backend/app/tests/ -v
 # Inspect registered accounts
 backend\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'backend'); from app.database import SessionLocal; from app.models.account import Account; db = SessionLocal(); print([(a.id, a.name, a.bank_name, a.account_type, a.current_balance, a.account_number) for a in db.query(Account).all()]); db.close()"
 ```
+
+---
+
+## 8. Statement Ingestion & Parsing Engine (`backend/app/services/statement_import.py`)
+
+### Supported Statement Formats:
+1. **Auto-Detect Engine (`AUTO_DETECT`)**:
+   - Uses regex pattern heuristics (`BANK_PATTERNS` & `DEMAT_PATTERNS`) to resolve date, description, debit, credit, amount, and reference columns across all major Indian banks (Axis, HDFC, SBI, ICICI, Kotak, PNB) and Demat brokers.
+2. **Bank CSV Statements**:
+   - Multi-encoding support: `utf-8-sig`, `utf-8`, `cp1252`, `latin1`, `iso-8859-1`.
+   - Preamble row skipping: Automatically identifies header rows even when preceded by bank logos or customer metadata.
+   - Flexible date parsing: Supports `%d-%m-%Y`, `%d/%m/%Y`, `%d/%m/%y`, `%Y-%m-%d`, `%d %b %Y`.
+   - Currency & number parsing: Strips `₹`, `$`, `Rs.`, commas, trailing `Cr`/`Dr`, and parenthesized negative amounts `(1,500.00)`.
+3. **Excel Workbooks (`.xlsx`, `.xls`)**:
+   - Multi-sheet scanner: Prioritizes sheets containing `Bank Statements`, `Transactions`, `Holdings`, `Orders`, etc.
+   - Netbanking HTML-as-XLS: Standard library `SimpleHTMLTableParser` parses HTML tables exported by netbanking portals with `.xls` extension.
+4. **Demat & Stock Statements (`GROWW_DEMAT`, `ANGELONE_DEMAT`, `ZERODHA_DEMAT`, `GENERIC_DEMAT`)**:
+   - Seamlessly synchronizes stock holdings into `investments` and trade activities into `transactions`.
+   - Auto-categorizes asset classes: Stocks, Mutual Funds, Index Funds, ETFs, ELSS.
+
