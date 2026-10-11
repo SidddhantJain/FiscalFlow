@@ -13,6 +13,7 @@ from app.models.budget import Budget
 from app.schemas.investment import Investment as InvestmentSchema, InvestmentCreate, InvestmentUpdate
 from app.routers.accounts import get_default_user_id
 from app.services.statement_import import import_demat_holdings
+from app.services.tax_engine import compute_capital_gains_tax
 
 router = APIRouter(prefix="/investments", tags=["Investments"])
 
@@ -127,6 +128,9 @@ def get_financial_analysis(db: Session = Depends(get_db), user_id: int = Depends
     liquid_cash = sum([Decimal(str(a.current_balance)) for a in accounts if a.account_type in ["SAVINGS", "SALARY", "WALLET", "CASH"]])
     total_wealth = total_current_value + liquid_cash
     
+    # Statutory Capital Gains Analysis (Finance Act 2024: STCG @ 20%, LTCG @ 12.5% with ₹1.25L exemption)
+    capital_gains = compute_capital_gains_tax(holdings_list)
+
     return {
         "portfolio_summary": {
             "total_invested": float(total_invested),
@@ -138,6 +142,7 @@ def get_financial_analysis(db: Session = Depends(get_db), user_id: int = Depends
             "cagr_estimate_pct": 14.8,  # Indicative Indian equity long-term benchmark
             "holdings_count": len(holdings_list)
         },
+        "capital_gains_tax": capital_gains,
         "sip_analytics": {
             "monthly_committed_sip": float(total_monthly_sip),
             "master_budget_target": float(master_sip_target),

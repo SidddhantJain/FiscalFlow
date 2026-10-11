@@ -139,6 +139,52 @@ def update_sip(sip_id: int, sip_update: SipScheduleUpdate, db: Session = Depends
         "status": db_sip.status
     }
 
+@router.get("/projection", response_model=dict)
+def calculate_sip_projection(
+    monthly_amount: float = 2500.0,
+    expected_cagr_pct: float = 12.0,
+    years: int = 10
+):
+    """
+    Calculates future wealth projection for regular SIP investments using standard compounding formula.
+    """
+    p = float(monthly_amount)
+    r = float(expected_cagr_pct)
+    n = int(years) * 12
+    i = (r / 100.0) / 12.0
+    
+    if i > 0:
+        future_val = p * (((1.0 + i) ** n - 1.0) / i) * (1.0 + i)
+    else:
+        future_val = p * n
+        
+    total_invested = p * n
+    wealth_gain = max(0.0, future_val - total_invested)
+    
+    # Statutory LTCG tax projection (Finance Act 2024: 12.5% on gains exceeding ₹1,25,000 + 4% cess)
+    statutory_ltcg_exemption = 125000.0
+    taxable_ltcg_gain = max(0.0, wealth_gain - statutory_ltcg_exemption)
+    projected_ltcg_tax = (taxable_ltcg_gain * 0.125) * 1.04
+    post_tax_future_value = future_val - projected_ltcg_tax
+
+    return {
+        "monthly_amount": p,
+        "expected_cagr_pct": r,
+        "years": years,
+        "total_months": n,
+        "total_invested": round(total_invested, 2),
+        "future_value": round(future_val, 2),
+        "wealth_gain": round(wealth_gain, 2),
+        "statutory_capital_gains_projection": {
+            "legal_basis": "Finance Act 2024 (Section 112A @ 12.5% + 4% Cess)",
+            "statutory_exemption_limit": statutory_ltcg_exemption,
+            "exempt_gain": round(min(wealth_gain, statutory_ltcg_exemption), 2),
+            "taxable_gain": round(taxable_ltcg_gain, 2),
+            "estimated_ltcg_tax": round(projected_ltcg_tax, 2),
+            "post_tax_future_value": round(post_tax_future_value, 2)
+        }
+    }
+
 @router.delete("/{sip_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_sip(sip_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_default_user_id)):
     db_sip = db.query(SipSchedule).filter(SipSchedule.id == sip_id, SipSchedule.user_id == user_id).first()
@@ -149,6 +195,7 @@ def delete_sip(sip_id: int, db: Session = Depends(get_db), user_id: int = Depend
     return None
 
 @router.post("/{sip_id}/execute", response_model=dict)
+@router.post("/{sip_id}/log-payment", response_model=dict)
 def record_sip_execution(sip_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_default_user_id)):
     """Records an investment transaction corresponding to this SIP."""
     db_sip = db.query(SipSchedule).filter(SipSchedule.id == sip_id, SipSchedule.user_id == user_id).first()

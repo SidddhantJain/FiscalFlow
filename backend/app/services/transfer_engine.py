@@ -25,41 +25,40 @@ def detect_and_link_transfers(db: Session, user_id: int, days_window: int = 2) -
         Transaction.destination_account_id.is_(None)
     ).order_by(Transaction.date.asc()).all()
     
-    # Split into potential debits and credits
+    account_map = {a.id: a for a in accounts}
+
+    # Split into potential debits and index credits by amount for O(1) lookup
     debits = []
-    credits = []
+    credits_by_amount = {}
     
     for tx in transactions:
-        # A transaction is a debit candidate if type is EXPENSE/INVESTMENT/SAVINGS/LOAN/TAX
         if tx.type in ["EXPENSE", "INVESTMENT", "SAVINGS", "LOAN", "TAX"]:
             debits.append(tx)
-        # A transaction is a credit candidate if type is INCOME
         elif tx.type in ["INCOME"]:
-            credits.append(tx)
+            amt = abs(tx.amount)
+            if amt not in credits_by_amount:
+                credits_by_amount[amt] = []
+            credits_by_amount[amt].append(tx)
             
     linked_count = 0
     matched_credits = set()
     
     for debit in debits:
         debit_amount = abs(debit.amount)
-        for credit in credits:
+        candidate_credits = credits_by_amount.get(debit_amount, [])
+        for credit in candidate_credits:
             if credit.id in matched_credits:
                 continue
-            
-            credit_amount = abs(credit.amount)
-            # 1. Amounts must match exactly
-            if debit_amount != credit_amount:
-                continue
                 
-            # 2. Must be different accounts
+            # Must be different accounts
             if debit.account_id == credit.account_id:
                 continue
                 
-            # 3. Date window check
+            # Date window check
             date_diff = abs((debit.date - credit.date).days)
             if date_diff <= days_window:
                 # Found a transfer match!
-                dest_account = db.query(Account).filter(Account.id == credit.account_id).first()
+                dest_account = account_map.get(credit.account_id)
                 if dest_account and dest_account.account_type == "SAVINGS":
                     debit.type = "SAVINGS"
                 else:

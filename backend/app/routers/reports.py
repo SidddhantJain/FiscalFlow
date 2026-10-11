@@ -10,6 +10,7 @@ from app.models.asset_liability import AssetLiability
 from app.models.transaction import Transaction
 from app.routers.accounts import get_default_user_id
 from app.services.ai_engine import forecast_cashflow, calculate_financial_health_score
+from app.services.tax_engine import compare_tax_regimes, compute_new_regime_tax
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -100,7 +101,9 @@ def get_financial_year_report(fy_label: str, db: Session = Depends(get_db), user
         "Q4": {"income": Decimal("0.00"), "expense": Decimal("0.00"), "savings": Decimal("0.00"), "investment": Decimal("0.00")}
     }
     
-    tax_savings_investments = Decimal("0.00")
+    investments_80c = Decimal("0.00")
+    investments_nps_80ccd1b = Decimal("0.00")
+    investments_80d = Decimal("0.00")
     
     for tx in txs:
         m = tx.date.month
@@ -122,12 +125,31 @@ def get_financial_year_report(fy_label: str, db: Session = Depends(get_db), user
             quarters[q]["savings"] += tx.amount
         elif t == "INVESTMENT":
             quarters[q]["investment"] += tx.amount
-            if tx.category and tx.category.name in ["PPF", "NPS", "Mutual Funds", "Insurance"]:
-                tax_savings_investments += tx.amount
+            cname = (tx.category.name if tx.category else "").upper()
+            if any(k in cname for k in ["PPF", "ELSS", "LIFE INSURANCE", "MUTUAL FUNDS", "PF"]):
+                investments_80c += tx.amount
+            elif "NPS" in cname:
+                investments_nps_80ccd1b += tx.amount
+            elif any(k in cname for k in ["HEALTH", "MEDICAL"]):
+                investments_80d += tx.amount
                 
     q_out = {}
     for q, vals in quarters.items():
         q_out[q] = {k: float(v) for k, v in vals.items()}
+        
+    total_income = float(sum(quarters[q]["income"] for q in quarters))
+    total_expense = float(sum(quarters[q]["expense"] for q in quarters))
+    total_savings = float(sum(quarters[q]["savings"] for q in quarters))
+    total_investments = float(sum(quarters[q]["investment"] for q in quarters))
+
+    # Statutory Indian Tax Calculations
+    tax_comparison = compare_tax_regimes(
+        gross_income=total_income,
+        deductions_80c=float(investments_80c),
+        deductions_80d=float(investments_80d),
+        deductions_nps_80ccd1b=float(investments_nps_80ccd1b),
+        is_salaried=True
+    )
         
     return {
         "financial_year": fy_label,
@@ -135,12 +157,14 @@ def get_financial_year_report(fy_label: str, db: Session = Depends(get_db), user
         "end_date": end_date.isoformat(),
         "quarters": q_out,
         "summary": {
-            "total_income": float(sum(quarters[q]["income"] for q in quarters)),
-            "total_expense": float(sum(quarters[q]["expense"] for q in quarters)),
-            "total_savings": float(sum(quarters[q]["savings"] for q in quarters)),
-            "total_investments": float(sum(quarters[q]["investment"] for q in quarters))
+            "total_income": total_income,
+            "total_expense": total_expense,
+            "total_savings": total_savings,
+            "total_investments": total_investments
         },
-        "tax_savings_deductions_80c_80d": float(tax_savings_investments)
+        "tax_savings_deductions_80c_80d": float(investments_80c + investments_80d + investments_nps_80ccd1b),
+        "statutory_capped_80c_deduction": min(float(investments_80c), 150000.0),
+        "statutory_tax_computation": tax_comparison
     }
 
 @router.get("/forecast")

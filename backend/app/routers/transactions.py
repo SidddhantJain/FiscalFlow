@@ -66,6 +66,9 @@ def create_transaction(tx: TransactionCreate, db: Session = Depends(get_db), use
     db.refresh(db_tx)
     return db_tx
 
+from sqlalchemy import func
+from datetime import date, timedelta
+
 @router.get("/", response_model=list[TransactionSchema])
 def list_transactions(
     start_date: date | None = None,
@@ -75,6 +78,9 @@ def list_transactions(
     account_id: int | None = None,
     tag: str | None = None,
     search: str | None = None,
+    days: int | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
     db: Session = Depends(get_db),
     user_id: int = Depends(get_default_user_id)
 ):
@@ -86,6 +92,11 @@ def list_transactions(
         Transaction.account_id.in_(user_account_ids)
     )
     
+    if days:
+        latest_date = db.query(func.max(Transaction.date)).filter(Transaction.account_id.in_(user_account_ids)).scalar()
+        ref_date = latest_date or date.today()
+        cutoff = ref_date - timedelta(days=days)
+        query = query.filter(Transaction.date >= cutoff)
     if start_date:
         query = query.filter(Transaction.date >= start_date)
     if end_date:
@@ -101,7 +112,13 @@ def list_transactions(
     if search:
         query = query.filter(Transaction.description.ilike(f"%{search}%"))
         
-    return query.order_by(Transaction.date.desc()).all()
+    query = query.order_by(Transaction.date.desc())
+    if offset:
+        query = query.offset(offset)
+    if limit:
+        query = query.limit(limit)
+        
+    return query.all()
 
 import os
 import time

@@ -30,6 +30,7 @@ const state = {
         tag: '',
         startDate: '',
         endDate: '',
+        timeframe: '30d',
         page: 1,
         pageSize: 10
     }
@@ -295,6 +296,19 @@ async function fetchTransactions() {
     if (state.filters.accountId) url.searchParams.append('account_id', state.filters.accountId);
     if (state.filters.type) url.searchParams.append('tx_type', state.filters.type);
     if (state.filters.tag) url.searchParams.append('tag', state.filters.tag);
+    if (state.filters.startDate) url.searchParams.append('start_date', state.filters.startDate);
+    if (state.filters.endDate) url.searchParams.append('end_date', state.filters.endDate);
+    
+    // Timeframe filtering (default 30 days for maximum performance while preserving all database records)
+    const tf = state.filters.timeframe || '30d';
+    if (tf === '30d') {
+        url.searchParams.append('days', 31);
+    } else if (tf === '90d') {
+        url.searchParams.append('days', 90);
+    } else if (tf === '180d') {
+        url.searchParams.append('days', 180);
+    }
+    // If tf === 'all', no 'days' parameter is appended, returning all stored transactions
     
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error("Transactions load failed");
@@ -598,10 +612,10 @@ function renderDashboardCashflowBars() {
     const q4 = state.fyReport.quarters.Q4 || { income: 0, expense: 0, savings: 0 };
 
     const quarters = [
-        { label: 'Q1', income: q1.income, expense: q1.expense, savings: q1.savings || 1000 },
-        { label: 'Q2', income: q2.income, expense: q2.expense, savings: q2.savings || 1000 },
-        { label: 'Q3', income: q3.income, expense: q3.expense, savings: q3.savings || 1000 },
-        { label: 'Q4', income: q4.income, expense: q4.expense, savings: q4.savings || 1000 }
+        { label: 'Q1', income: q1.income, expense: q1.expense, savings: q1.savings || 0 },
+        { label: 'Q2', income: q2.income, expense: q2.expense, savings: q2.savings || 0 },
+        { label: 'Q3', income: q3.income, expense: q3.expense, savings: q3.savings || 0 },
+        { label: 'Q4', income: q4.income, expense: q4.expense, savings: q4.savings || 0 }
     ];
 
     const maxAmt = Math.max(...quarters.map(q => Math.max(q.income, q.expense, q.savings))) || 1;
@@ -641,6 +655,14 @@ function renderTransactionsTab() {
         return;
     }
 
+    const badge = document.getElementById('tx-count-badge');
+    if (badge) {
+        const tf = state.filters.timeframe || '30d';
+        const tfText = tf === '30d' ? 'Past 30 Days' : (tf === '90d' ? '3 Months' : (tf === '180d' ? '6 Months' : 'All Data'));
+        badge.textContent = `${state.transactions.length} Entries (${tfText})`;
+    }
+
+    const rows = [];
     state.transactions.forEach(tx => {
         const txDate = new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
         const isExpense = tx.type === 'EXPENSE' || tx.type === 'TAX';
@@ -723,7 +745,7 @@ function renderTransactionsTab() {
 
         const accountText = tx.account ? tx.account.name : `Account ID: ${tx.account_id}`;
 
-        tbody.innerHTML += `
+        rows.push(`
             <tr class="hover:bg-surface-container-low transition-colors duration-200">
                 <td class="px-6 py-4 font-data-mono text-data-mono whitespace-nowrap">${txDate}</td>
                 <td class="px-6 py-4">
@@ -740,8 +762,9 @@ function renderTransactionsTab() {
                 <td class="px-6 py-4 text-right whitespace-nowrap">
                     <button class="material-symbols-outlined text-outline hover:text-error transition-colors text-[18px]" onclick="deleteTransaction(${tx.id})">delete</button>
                 </td>
-            </tr>`;
+            </tr>`);
     });
+    tbody.innerHTML = rows.join('');
 }
 
 // Financial Year Tab Renderer
@@ -751,19 +774,64 @@ function renderFinancialYearTab() {
     // Quarterly & Summaries
     const summary = state.fyReport.summary || { total_income: 0, total_expense: 0, total_savings: 0, total_investments: 0 };
     document.getElementById('fy-total-income').textContent = fmt.format(summary.total_income);
-    document.getElementById('fy-taxable-est').textContent = fmt.format(Math.max(0, summary.total_income - 50000)); // standard ded.
     
-    // Capping calculations for Section 80C/80D (Typical Indian cap 1,50,000 + 50,000 NPS = 2,00,000)
-    const totalTaxDeducted = state.fyReport.tax_savings_deductions_80c_80d || 0;
-    const remainingToCap = Math.max(0, 150000 - totalTaxDeducted);
+    const taxComp = state.fyReport.statutory_tax_computation || {};
+    const newReg = taxComp.new_regime || {};
+    const oldReg = taxComp.old_regime || {};
+
+    // Standard deduction in New Regime is ₹75,000 under Finance Act 2024
+    const newTaxable = newReg.taxable_income !== undefined ? newReg.taxable_income : Math.max(0, summary.total_income - 75000);
+    document.getElementById('fy-taxable-est').textContent = fmt.format(newTaxable);
+    
+    // Capping calculations for Section 80C (Statutory limit strictly ₹1,50,000)
+    const capped80c = state.fyReport.statutory_capped_80c_deduction || 0;
+    const remainingToCap = Math.max(0, 150000 - capped80c);
     document.getElementById('fy-tax-saved-rem').textContent = fmt.format(remainingToCap);
     
-    const percentageCap = Math.min(100, (totalTaxDeducted / 150000) * 100);
+    const percentageCap = Math.min(100, (capped80c / 150000) * 100);
     const progressRing = document.getElementById('fy-tax-progress-bar');
     if (progressRing) {
         progressRing.style.width = `${percentageCap}%`;
     }
     document.getElementById('fy-tax-progress-percent').textContent = `${percentageCap.toFixed(0)}%`;
+
+    // Render Dual Regime Comparison Details
+    if (document.getElementById('tax-new-gross')) {
+        document.getElementById('tax-new-gross').textContent = fmt.format(newReg.gross_income || summary.total_income);
+        document.getElementById('tax-new-std-ded').textContent = fmt.format(newReg.standard_deduction || 75000);
+        document.getElementById('tax-new-taxable').textContent = fmt.format(newReg.taxable_income || 0);
+        document.getElementById('tax-new-slab-tax').textContent = fmt.format(newReg.tax_before_rebate || 0);
+        document.getElementById('tax-new-rebate').textContent = `-${fmt.format(newReg.rebate_87a || 0)}`;
+        document.getElementById('tax-new-cess').textContent = fmt.format(newReg.cess_4_pct || 0);
+        document.getElementById('tax-new-total').textContent = fmt.format(newReg.total_tax || 0);
+    }
+
+    if (document.getElementById('tax-old-gross')) {
+        const claimed = oldReg.claimed_deductions || {};
+        document.getElementById('tax-old-gross').textContent = fmt.format(oldReg.gross_income || summary.total_income);
+        document.getElementById('tax-old-std-ded').textContent = fmt.format(oldReg.standard_deduction || 50000);
+        document.getElementById('tax-old-80c').textContent = fmt.format(claimed.section_80c || 0);
+        const otherDed = (claimed.section_80d || 0) + (claimed.section_80ccd_1b_nps || 0);
+        document.getElementById('tax-old-other-ded').textContent = fmt.format(otherDed);
+        document.getElementById('tax-old-taxable').textContent = fmt.format(oldReg.taxable_income || 0);
+        document.getElementById('tax-old-rebate').textContent = `-${fmt.format(oldReg.rebate_87a || 0)}`;
+        document.getElementById('tax-old-cess').textContent = fmt.format(oldReg.cess_4_pct || 0);
+        document.getElementById('tax-old-total').textContent = fmt.format(oldReg.total_tax || 0);
+    }
+
+    const recBadge = document.getElementById('fy-regime-recommendation-badge');
+    if (recBadge) {
+        if (taxComp.recommended_regime === 'NEW_REGIME') {
+            recBadge.className = "px-4 py-2 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-2";
+            recBadge.innerHTML = `<span class="material-symbols-outlined text-sm">verified</span> Recommended: New Regime (Saves ${fmt.format(taxComp.tax_savings_amount || 0)})`;
+        } else if (taxComp.recommended_regime === 'OLD_REGIME') {
+            recBadge.className = "px-4 py-2 rounded-lg bg-blue-100 text-blue-800 font-bold text-xs flex items-center gap-2";
+            recBadge.innerHTML = `<span class="material-symbols-outlined text-sm">verified</span> Recommended: Old Regime (Saves ${fmt.format(taxComp.tax_savings_amount || 0)})`;
+        } else {
+            recBadge.className = "px-4 py-2 rounded-lg bg-surface-container-high text-primary font-bold text-xs flex items-center gap-2";
+            recBadge.innerHTML = `<span class="material-symbols-outlined text-sm">balance</span> Equal Tax in Both Regimes`;
+        }
+    }
 
     // Smart recommendations dynamically computed
     const recsList = document.getElementById('fy-recommendations-list');
@@ -779,7 +847,7 @@ function renderFinancialYearTab() {
             recsList.innerHTML += `
                 <div class="px-4 py-2 bg-surface-container-high rounded-full border border-outline-variant text-sm flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-secondary"></span>
-                    Great job! You have fully capped your <span class="font-bold">Section 80C</span> deduction limits for this Financial Year.
+                    Great job! You have fully capped your <span class="font-bold">Section 80C</span> deduction limits (₹1,50,000) for this Financial Year.
                 </div>`;
         }
 
@@ -817,9 +885,9 @@ function renderFYPortfolioSnapshots() {
     const npsSum = state.investments.filter(i => i.asset_class === 'NPS' || i.name.toUpperCase().includes('NPS')).reduce((sum, i) => sum + i.current_value, 0);
     const elssSum = state.investments.filter(i => i.asset_class === 'ELSS' || i.name.toUpperCase().includes('ELSS')).reduce((sum, i) => sum + i.current_value, 0);
 
-    document.getElementById('fy-portfolio-ppf').textContent = fmt.format(ppfSum || 1845200); // defaults from mockups
-    document.getElementById('fy-portfolio-nps').textContent = fmt.format(npsSum || 812000);
-    document.getElementById('fy-portfolio-elss').textContent = fmt.format(elssSum || 1288500);
+    document.getElementById('fy-portfolio-ppf').textContent = fmt.format(ppfSum || 0);
+    document.getElementById('fy-portfolio-nps').textContent = fmt.format(npsSum || 0);
+    document.getElementById('fy-portfolio-elss').textContent = fmt.format(elssSum || 0);
 }
 
 // AI Insights Tab Renderer
@@ -855,7 +923,7 @@ function renderInsightsTab() {
                         <p class="font-body-sm text-on-surface-variant mb-3">${ins.content}</p>
                         <div class="flex justify-between items-center pt-2 border-t border-outline-variant/30 text-xs">
                             <span class="text-on-surface-variant">Potential Savings</span>
-                            <span class="font-data-mono text-error font-bold">${fmt.format(ins.potential_savings || 1200)}</span>
+                            <span class="font-data-mono text-error font-bold">${fmt.format(ins.potential_savings || 0)}</span>
                         </div>
                     </div>`;
             });
@@ -948,23 +1016,23 @@ function renderForecastPredictorChart() {
     const height = 240;
     
     // Draw basic grid line paths dynamically
-    // Map last 5 months history + 3 months prediction using real cashflow rates
-    const balance = state.forecast.current_total_balance || 12450000;
-    const incRem = state.forecast.projected_income_remaining || 0;
-    const expRem = state.forecast.projected_expense_remaining || 0;
+    const balance = (state.forecast && typeof state.forecast.current_total_balance === 'number') ? state.forecast.current_total_balance : (state.totalBalance || 0);
+    const incRem = (state.forecast && state.forecast.projected_income_remaining) || 0;
+    const expRem = (state.forecast && state.forecast.projected_expense_remaining) || 0;
+    const netFlow = incRem - expRem;
     
     const points = [
-        balance - 400000,
-        balance - 250000,
-        balance - 100000,
+        Math.max(0, balance - netFlow * 0.75),
+        Math.max(0, balance - netFlow * 0.50),
+        Math.max(0, balance - netFlow * 0.25),
         balance, // Today
     ];
     
     const futurePoints = [
         balance,
-        balance + (incRem - expRem) * 0.5,
-        balance + (incRem - expRem) * 1.0,
-        balance + (incRem - expRem) * 1.5,
+        balance + netFlow * 0.33,
+        balance + netFlow * 0.66,
+        balance + netFlow * 1.0,
     ];
 
     const allPoints = [...points, ...futurePoints.slice(1)];
@@ -1396,44 +1464,55 @@ async function handleImportStatement(e) {
         return;
     }
 
+    const file = fileInput.files[0];
     const formData = new FormData();
     formData.append('account_id', account_id);
     formData.append('bank_type', bank_type);
-    formData.append('file', fileInput.files[0]);
+    formData.append('file', file);
 
-    try {
-        showLoading(true);
-        const res = await fetch(`${API_BASE}/transactions/import`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.detail || `Upload failed (Status ${res.status})`);
+    // Immediately close modal and reset form so user can keep browsing & working in parallel!
+    closeModal('import-modal');
+    document.getElementById('import-statement-form').reset();
+
+    // Trigger non-blocking progress UI & floating pill
+    showBgTask("Ingesting Statement...", `Processing "${file.name}" in background. You can navigate and work freely.`);
+    showToast(`🚀 Ingesting statement in background... Feel free to continue using FiscalFlow.`, "info", 5000);
+
+    // Fire background ingestion (non-blocking)
+    (async () => {
+        try {
+            const res = await fetch(`${API_BASE}/transactions/import`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || `Upload failed (Status ${res.status})`);
+            }
+            const data = await res.json();
+            
+            hideBgTask();
+            showToast("✅ " + (data.message || "Statement imported successfully!"), "success", 6000);
+            
+            // Silently update state in background
+            await Promise.all([
+                fetchTransactions(),
+                fetchAccounts(),
+                fetchStatementFiles(),
+                typeof fetchInvestmentsAnalysis === 'function' ? fetchInvestmentsAnalysis() : Promise.resolve(),
+                fetchNetWorth(),
+                fetchHealthScore(),
+                fetchForecast(),
+                fetchInsights(),
+                fetchFYReport()
+            ]);
+            renderAll();
+        } catch (err) {
+            hideBgTask();
+            showToast("❌ Import failed: " + err.message, "error", 8000);
         }
-        const data = await res.json();
-        
-        showToast(data.message || "Statement imported successfully!", "success");
-        closeModal('import-modal');
-        document.getElementById('import-statement-form').reset();
-        
-        await Promise.all([
-            fetchTransactions(),
-            fetchAccounts(),
-            typeof fetchInvestments === 'function' ? fetchInvestments() : Promise.resolve(),
-            fetchNetWorth(),
-            fetchHealthScore(),
-            fetchForecast(),
-            fetchInsights(),
-            fetchFYReport()
-        ]);
-        renderAll();
-    } catch (err) {
-        showToast("Import failed: " + err.message, "error");
-    } finally {
-        showLoading(false);
-    }
+    })();
 }
 
 async function triggerTransferDetection() {
@@ -1593,7 +1672,7 @@ function showLoading(show = true) {
     }
 }
 
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', duration = 3500) {
     let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
@@ -1614,11 +1693,60 @@ function showToast(message, type = 'info') {
         toast.style.opacity = '0';
         toast.style.transform = 'translateY(10px)';
         setTimeout(() => toast.remove(), 300);
-    }, 3500);
+    }, duration);
 }
+
+function showBgTask(title, desc) {
+    const el = document.getElementById('bg-task-indicator');
+    if (!el) return;
+    const t = document.getElementById('bg-task-title');
+    const d = document.getElementById('bg-task-desc');
+    if (t && title) t.textContent = title;
+    if (d && desc) d.textContent = desc;
+    el.classList.remove('hidden');
+    el.classList.add('flex');
+}
+
+function hideBgTask() {
+    const el = document.getElementById('bg-task-indicator');
+    if (!el) return;
+    el.classList.add('hidden');
+    el.classList.remove('flex');
+}
+
+window.setTimeframeFilter = async function(timeframe) {
+    state.filters.timeframe = timeframe;
+    
+    // Update button styling
+    ['30d', '90d', '180d', 'all'].forEach(tf => {
+        const btn = document.getElementById(`timeframe-btn-${tf}`);
+        if (btn) {
+            if (tf === timeframe) {
+                btn.className = "px-2.5 py-1 text-xs font-bold rounded-md bg-primary text-white shadow-sm transition-all";
+            } else {
+                btn.className = "px-2.5 py-1 text-xs font-semibold rounded-md text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-all";
+            }
+        }
+    });
+
+    const badge = document.getElementById('tx-count-badge');
+    if (badge) {
+        const tfText = timeframe === '30d' ? 'Past 30 Days' : (timeframe === '90d' ? '3 Months' : (timeframe === '180d' ? '6 Months' : 'All Data'));
+        badge.textContent = `Loading ${tfText}...`;
+    }
+
+    try {
+        await fetchTransactions();
+        renderTransactionsTab();
+    } catch (err) {
+        showToast("Error filtering transactions: " + err.message, "error");
+    }
+};
 
 window.showLoading = showLoading;
 window.showToast = showToast;
+window.showBgTask = showBgTask;
+window.hideBgTask = hideBgTask;
 
 function debounce(func, wait) {
     let timeout;
@@ -2312,41 +2440,48 @@ async function handleImportDemat(e) {
         return;
     }
 
+    const file = fileInput.files[0];
     const formData = new FormData();
     formData.append('account_id', account_id);
     formData.append('broker_type', broker_type);
-    formData.append('file', fileInput.files[0]);
+    formData.append('file', file);
 
-    try {
-        showLoading(true);
-        const res = await fetch(`${API_BASE}/investments/import-demat`, {
-            method: 'POST',
-            body: formData
-        });
+    // Immediately close modal & reset form
+    closeModal('import-demat-modal');
+    document.getElementById('import-demat-form').reset();
 
-        if (!res.ok) {
-            const errData = await res.json();
-            throw new Error(errData.detail || "Demat Statement import failed");
+    showBgTask("Syncing Demat Statement...", `Processing "${file.name}" in background. You can navigate and work freely.`);
+    showToast("🚀 Syncing Demat portfolio in background... Keep using FiscalFlow freely.", "info", 5000);
+
+    (async () => {
+        try {
+            const res = await fetch(`${API_BASE}/investments/import-demat`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || "Demat Statement import failed");
+            }
+
+            const data = await res.json();
+            hideBgTask();
+            showToast("✅ " + (data.message || "Demat statement synced successfully!"), "success", 6000);
+
+            await Promise.all([
+                fetchAccounts(),
+                fetchInvestmentsAnalysis(),
+                fetchTransactions(),
+                fetchNetWorth(),
+                fetchStatementFiles()
+            ]);
+            renderAll();
+        } catch (err) {
+            hideBgTask();
+            showToast("❌ Demat import failed: " + err.message, "error", 8000);
         }
-
-        const data = await res.json();
-        showToast(data.message || "Demat statement uploaded and synced successfully!", "success");
-        closeModal('import-demat-modal');
-        document.getElementById('import-demat-form').reset();
-
-        await Promise.all([
-            fetchAccounts(),
-            fetchInvestmentsAnalysis(),
-            fetchTransactions(),
-            fetchNetWorth(),
-            fetchStatementFiles()
-        ]);
-        renderAll();
-    } catch (err) {
-        showToast("Error importing Demat statement: " + err.message, "error");
-    } finally {
-        showLoading(false);
-    }
+    })();
 }
 
 async function handleAddHolding(e) {
@@ -2642,6 +2777,18 @@ function renderInvestmentsTab() {
                     </div>`;
             });
         }
+    }
+
+    // 4b. Statutory Capital Gains Tax (Finance Act 2024)
+    const cg = data.capital_gains_tax || {};
+    const stcg = cg.stcg || {};
+    const ltcg = cg.ltcg || {};
+    if (document.getElementById('inv-stcg-tax')) {
+        document.getElementById('inv-stcg-tax').textContent = fmt.format(stcg.tax || 0);
+        document.getElementById('inv-stcg-gain').textContent = fmt.format(stcg.net_gain || 0);
+        document.getElementById('inv-ltcg-tax').textContent = fmt.format(ltcg.tax || 0);
+        document.getElementById('inv-ltcg-gain').textContent = fmt.format(ltcg.net_gain || 0);
+        document.getElementById('inv-total-gains-tax').textContent = fmt.format(cg.total_capital_gains_tax || 0);
     }
 
     // 5. SIP Schedules Grid

@@ -206,7 +206,9 @@ backend\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'backend'); 
    - Uses regex pattern heuristics (`BANK_PATTERNS` & `DEMAT_PATTERNS`) to resolve date, description, debit, credit, amount, and reference columns across all major Indian banks (Axis, HDFC, SBI, ICICI, Kotak, PNB) and Demat brokers.
 2. **Bank CSV Statements**:
    - Multi-encoding support: `utf-8-sig`, `utf-8`, `cp1252`, `latin1`, `iso-8859-1`.
-   - Preamble row skipping: Automatically identifies header rows even when preceded by bank logos or customer metadata.
+   - Deep preamble scan: Scans up to 120 lines to locate genuine table headers past extended bank customer information (Name, IFSC, MICR, Address, Nominee, PAN, CKYC).
+   - Quote sanitization & EOF error prevention: Automatically balances and sanitizes unclosed quotes (`line.count('"') % 2 != 0`) and employs `quoting=csv.QUOTE_NONE` fallback to permanently prevent `EOF inside string starting at row X` errors.
+   - Footer & disclaimer truncation: Automatically detects and trims trailing footer blocks (`*** END OF STATEMENT ***`, `Abbreviations:`, `Legends:`, `Disclaimer:`, `Page total:`) preventing footer text from corrupting transaction rows.
    - Flexible date parsing: Supports `%d-%m-%Y`, `%d/%m/%Y`, `%d/%m/%y`, `%Y-%m-%d`, `%d %b %Y`.
    - Currency & number parsing: Strips `₹`, `$`, `Rs.`, commas, trailing `Cr`/`Dr`, and parenthesized negative amounts `(1,500.00)`.
 3. **Excel Workbooks (`.xlsx`, `.xls`)**:
@@ -214,5 +216,37 @@ backend\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'backend'); 
    - Netbanking HTML-as-XLS: Standard library `SimpleHTMLTableParser` parses HTML tables exported by netbanking portals with `.xls` extension.
 4. **Demat & Stock Statements (`GROWW_DEMAT`, `ANGELONE_DEMAT`, `ZERODHA_DEMAT`, `GENERIC_DEMAT`)**:
    - Seamlessly synchronizes stock holdings into `investments` and trade activities into `transactions`.
-   - Auto-categorizes asset classes: Stocks, Mutual Funds, Index Funds, ETFs, ELSS.
+   - Auto-categorizes asset classes: Stocks, Mutual Funds, Index Funds, ETFs, ELSS.## 9. Statutory Indian Tax & Capital Gains Engine (`backend/app/services/tax_engine.py`)
 
+### Legal Compliance: Finance Act 2024 / FY 2024-25 & FY 2025-26
+1. **New Tax Regime (Section 115BAC - Default)**:
+   - **Salaried Standard Deduction**: ₹75,000 (increased from ₹50,000 under Finance (No. 2) Act, 2024).
+   - **Tax Slabs**:
+     - ₹0 – ₹3,00,000: Nil (0%)
+     - ₹3,00,001 – ₹7,00,000: 5%
+     - ₹7,00,001 – ₹10,00,000: 10%
+     - ₹10,00,001 – ₹12,00,000: 15%
+     - ₹12,00,001 – ₹15,00,000: 20%
+     - Above ₹15,00,000: 30%
+   - **Section 87A Rebate**: Full 100% tax rebate if Net Taxable Income $\le$ ₹7,00,000 (Rebate up to ₹25,000). Total tax = ₹0 for gross salary up to ₹7,75,000.
+   - **Marginal Relief**: Automatically caps tax when income slightly exceeds ₹7,00,000 so tax payable never exceeds the income above ₹7,00,000.
+   - **Health & Education Cess**: 4% on net tax.
+
+2. **Old Tax Regime**:
+   - **Standard Deduction**: ₹50,000.
+   - **Chapter VI-A Statutory Caps**:
+     - **Section 80C**: Strictly capped at ₹1,50,000 (ELSS, PPF, EPF, LIC, tuition, home loan principal).
+     - **Section 80D**: Health Insurance capped at ₹25,000.
+     - **Section 80CCD(1B)**: Additional NPS deduction capped at ₹50,000.
+   - **Slabs**: 0–2.5L: Nil | 2.5L–5L: 5% | 5L–10L: 20% | >10L: 30%.
+   - **Section 87A Rebate**: Up to ₹12,500 for taxable income $\le$ ₹5,00,000.
+   - **Health & Education Cess**: 4% on net tax.
+
+3. **Statutory Capital Gains Tax (Finance Act 2024)**:
+   - **Holding Period Threshold**: 365 days (12 months) for listed equity and mutual funds.
+   - **STCG (Section 111A)**: Taxed at flat **20%** (+4% cess = 20.8%).
+   - **LTCG (Section 112A)**: Taxed at flat **12.5%** (+4% cess = 13.0%) on gains exceeding the **₹1,25,000 statutory annual exemption** (increased from ₹1,00,000).
+
+4. **Automated Deep Penetration Testing**:
+   - 64 tests across 12 test suites verifying every tax slab, cliff, deduction cap, stress condition, and edge case with 100% pass rate (`pytest`).
+   - Production database (`fiscalflow.db`) is strictly purged of temp/benchmark accounts; benchmark scripts run solely against isolated, temporary databases.

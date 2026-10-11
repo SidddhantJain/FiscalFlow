@@ -1,0 +1,4 @@
+Stock Name,Symbol,Quantity,Avg Price,Current Price,Invested Value,Current Value,Trade Date,Type
+Tata Consultancy Services,TCS,10,3200.00,3800.00,32000.00,38000.00,2024-10-01,BUY
+Infosys Ltd,INFY,25,1400.00,1650.00,35000.00,41250.00,2024-10-05,BUY
+Parag Parikh Flexi Cap Fund - Direct Growth,PPFAS,150,60.00,75.00,9000.00,11250.00,2024-10-10,SIP

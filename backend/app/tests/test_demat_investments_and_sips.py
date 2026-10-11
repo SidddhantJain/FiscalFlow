@@ -217,3 +217,101 @@ def test_financial_analysis_tool(client, db):
     assert sip_analytics["monthly_committed_sip"] == 5500.00
     assert sip_analytics["master_budget_target"] == 5500.00
     assert sip_analytics["sip_alignment_pct"] == 100.0
+
+def test_angel_one_mutual_fund_holdings_format_parsing():
+    """Validates parsing Angel One Excel structure with header preamble and Fund Name / ISIN / NAV columns."""
+    from app.services.statement_import import parse_demat_statement
+    angel_csv = (
+        "Client ID,S61221363\n"
+        "Name,SIDDHANT SHREYANS MISHRIKOTKAR\n"
+        "PAN NO,XXXXXX178F\n"
+        "\n"
+        "Summary of your holdings\n"
+        "Invested Value,Value as on,Unrealized P&L,Unrealized P&L %\n"
+        "25649.36,26501.76,852.40,3.32\n"
+        "\n"
+        "Holdings as on 08/10/2026\n"
+        "Fund Name,ISIN,Category,Sub Category,Folio No,Source,Units,Invested Value,Value as on,Average NAV,NAV as on,Unrealized P&L,Unrealized P&L %\n"
+        "HDFC Small Cap Fund,INF179KA1RW5,Equity,Small Cap Fund,32890510/71,Angel One,76.373,11749.87,11740.74,153.848,153.729,-9.13,-0.08\n"
+        "Nippon India Silver ETF FoF,INF204KC1378,Other,FoFs Domestic,488444974147,Angel One,59.897,1999.96,1964.37,33.39,32.796,-35.59,-1.78\n"
+        "Total,25649.36,26501.76\n"
+    )
+    holdings, txs = parse_demat_statement(angel_csv.encode("utf-8"), "Statement_2026.csv", "ANGELONE_DEMAT")
+    assert len(holdings) == 2
+    assert holdings[0]["name"] == "HDFC Small Cap Fund"
+    assert holdings[0]["symbol"] == "INF179KA1RW5"
+    assert holdings[0]["units"] == Decimal("76.373")
+    assert holdings[0]["purchase_price"] == Decimal("153.848")
+    assert holdings[0]["current_value"] == Decimal("11740.74")
+    assert holdings[0]["asset_class"] == "MUTUAL_FUND"
+
+    assert holdings[1]["name"] == "Nippon India Silver ETF FoF"
+    assert holdings[1]["units"] == Decimal("59.897")
+
+def test_groww_balance_statement_ledger_parsing():
+    """Validates parsing Groww Balance Statement funds ledger with Debit (Rs.) and Credit (Rs.)."""
+    from app.services.statement_import import parse_statement
+    groww_csv = (
+        "Client Name,Siddhant Shreyans Mishrikotkar\n"
+        "Unique Client Code,5664699170\n"
+        "PAN,FYDPM2178F\n"
+        "\n"
+        "Transaction Date,Settlement Date,Clearing Member,Segment Type,Settlement No.,Bill/Chq No.,Transaction Type,Particulars / Narration,Voucher No.,Debit (Rs.),Credit (Rs.),Balance (Rs.)\n"
+        "28-09-2026,29-09-2026,CM,STOCKS_SETTLEMENT,5664699170_2026183M,5664699170_2026183M,bill,SET26280920697589853542567,0,0,544.48,544.48\n"
+        "28-09-2026,28-09-2026,UPI,GROWW_WITHDRAW,PAYMENT|123,Payment,WTD26281842,GROWW WITHDRAWAL,0,22199.13,0,0\n"
+        "10-08-2026,10-08-2026,UPI,UPI,JV,DEP20260810,JV,UPI DEPOSIT,0,0,1000.00,1000.00\n"
+    )
+    txs = parse_statement(groww_csv.encode("utf-8"), "Groww_Balance_Statement.csv", "AUTO_DETECT")
+    assert len(txs) == 3
+    # Credit is income
+    assert txs[0]["type"] == "INCOME"
+    assert txs[0]["amount"] == Decimal("544.48")
+    # Debit is expense
+    assert txs[1]["type"] == "EXPENSE"
+    assert txs[1]["amount"] == Decimal("22199.13")
+    # Credit deposit is income
+    assert txs[2]["type"] == "INCOME"
+    assert txs[2]["amount"] == Decimal("1000.00")
+
+def test_credit_debit_preservation_with_indicator_and_ai_engine(db):
+    """Guarantees that Credit/Debit indicator mapping and auto-categorization never invert transaction direction."""
+    from app.services.statement_import import parse_statement, import_statement_transactions
+    from app.services.ai_engine import auto_categorize_uncategorized_transactions
+    from app.models.transaction import Transaction
+
+    acc = Account(
+        user_id=1,
+        name="Indicator Test Account",
+        bank_name="Test Bank",
+        account_type="SAVINGS",
+        opening_balance=Decimal("10000.00"),
+        current_balance=Decimal("10000.00"),
+        currency="INR"
+    )
+    db.add(acc)
+    db.commit()
+
+    # Statement with unified Amount column and Indicator column
+    csv_data = (
+        "Date,Particulars,Amount,Type\n"
+        "2024-10-10,UPI from Vivek,500.00,CR\n"
+        "2024-10-11,Sigma cafe Lunch,80.00,DR\n"
+        "2024-10-12,Refund from Amazon,250.00,CR\n"
+    )
+    txs = parse_statement(csv_data.encode("utf-8"), "test.csv", "AUTO_DETECT")
+    assert len(txs) == 3
+    assert txs[0]["type"] == "INCOME"
+    assert txs[1]["type"] == "EXPENSE"
+    assert txs[2]["type"] == "INCOME"
+
+    # Import into DB
+    import_statement_transactions(db, acc.id, txs)
+    # Run auto-categorization
+    auto_categorize_uncategorized_transactions(db, 1)
+
+    db_txs = db.query(Transaction).filter(Transaction.account_id == acc.id).order_by(Transaction.date).all()
+    # Ensure income transactions remained INCOME even after categorizer ran!
+    assert db_txs[0].type == "INCOME"
+    assert db_txs[1].type == "EXPENSE"
+    assert db_txs[2].type == "INCOME"
+

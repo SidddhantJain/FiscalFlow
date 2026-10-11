@@ -51,25 +51,25 @@ BANK_TEMPLATES = {
     "GROWW_DEMAT": {
         "is_demat": True,
         "broker": "Groww",
-        "symbol_cols": ["Symbol", "Stock Name", "Scheme Name", "Company Name", "Instrument"],
-        "qty_cols": ["Quantity", "Qty", "Shares", "Units", "Total Quantity"],
-        "buy_price_cols": ["Avg Price", "Buy Price", "Average Price", "Buy Avg Price", "Purchase Price"],
-        "curr_price_cols": ["Current Price", "Market Price", "CMP", "NAV", "Last Price"],
-        "invested_cols": ["Invested Value", "Invested Amount", "Total Invested", "Investment Value"],
-        "current_val_cols": ["Current Value", "Present Value", "Market Value", "Total Current Value"],
-        "date_cols": ["Trade Date", "Date", "Buy Date", "Execution Date"],
-        "type_cols": ["Type", "Trade Type", "Transaction Type", "Order Type"]
+        "symbol_cols": ["Symbol", "Stock Name", "Scheme Name", "Company Name", "Instrument", "Fund Name", "Tradingsymbol", "Scrip Name"],
+        "qty_cols": ["Quantity", "Qty", "Shares", "Units", "Total Quantity", "Trade Qty"],
+        "buy_price_cols": ["Avg Price", "Buy Price", "Average Price", "Buy Avg Price", "Purchase Price", "Price", "Execution Price", "Trade Price"],
+        "curr_price_cols": ["Current Price", "Market Price", "CMP", "NAV", "Last Price", "LTP"],
+        "invested_cols": ["Invested Value", "Invested Amount", "Total Invested", "Investment Value", "Order Value", "Trade Value", "Total Amount"],
+        "current_val_cols": ["Current Value", "Present Value", "Market Value", "Total Current Value", "Valuation"],
+        "date_cols": ["Trade Date", "Date", "Buy Date", "Execution Date", "Order Date", "Order Execution Time"],
+        "type_cols": ["Type", "Trade Type", "Transaction Type", "Order Type", "Action", "Buy/Sell"]
     },
     "ANGELONE_DEMAT": {
         "is_demat": True,
         "broker": "Angel One",
-        "symbol_cols": ["Symbol", "Scrip Name", "Stock", "Instrument"],
-        "qty_cols": ["Qty", "Quantity", "Shares", "Trade Qty"],
-        "buy_price_cols": ["Price", "Trade Price", "Avg Price", "Buy Price"],
-        "curr_price_cols": ["CMP", "Current Price", "Market Price", "NAV"],
-        "invested_cols": ["Trade Value", "Net Amount", "Invested Value", "Total Amount"],
-        "current_val_cols": ["Current Value", "Market Value", "Valuation"],
-        "date_cols": ["Trade Date", "Date", "Txn Date"],
+        "symbol_cols": ["Fund Name", "ISIN", "Symbol", "Scrip Name", "Stock", "Instrument", "Scheme Name"],
+        "qty_cols": ["Units", "Qty", "Quantity", "Shares", "Trade Qty"],
+        "buy_price_cols": ["Average NAV", "Avg NAV", "Price", "Trade Price", "Avg Price", "Buy Price"],
+        "curr_price_cols": ["NAV as on", "NAV", "CMP", "Current Price", "Market Price"],
+        "invested_cols": ["Invested Value", "Trade Value", "Net Amount", "Total Amount", "Invested Amount"],
+        "current_val_cols": ["Value as on", "Current Value", "Market Value", "Valuation", "Total Current Value"],
+        "date_cols": ["Trade Date", "Date", "Txn Date", "Execution Date"],
         "type_cols": ["Buy/Sell", "Type", "Trade Type"]
     },
     "ZERODHA_DEMAT": {
@@ -87,12 +87,12 @@ BANK_TEMPLATES = {
     "GENERIC_DEMAT": {
         "is_demat": True,
         "broker": "Demat",
-        "symbol_cols": ["Symbol", "Name", "Stock Name", "Scheme Name"],
+        "symbol_cols": ["Fund Name", "ISIN", "Symbol", "Name", "Stock Name", "Scheme Name"],
         "qty_cols": ["Quantity", "Units", "Qty"],
-        "buy_price_cols": ["Buy Price", "Avg Price", "Price"],
-        "curr_price_cols": ["Current Price", "CMP", "NAV"],
+        "buy_price_cols": ["Average NAV", "Buy Price", "Avg Price", "Price"],
+        "curr_price_cols": ["NAV as on", "Current Price", "CMP", "NAV"],
         "invested_cols": ["Invested Value", "Invested Amount"],
-        "current_val_cols": ["Current Value", "Valuation"],
+        "current_val_cols": ["Value as on", "Current Value", "Valuation"],
         "date_cols": ["Date", "Trade Date"],
         "type_cols": ["Type", "Transaction Type"]
     }
@@ -109,19 +109,23 @@ BANK_PATTERNS = {
         r"transaction\s*details", r"narrative", r"transaction\s*remarks", r"memo", r"^desc$"
     ],
     "debit": [
-        r"^dr$", r"^debit$", r"withdrawal", r"withdrawal\s*amt", r"withdrawal\s*amount",
+        r"^dr$", r"^dr\b", r"\bdr\b", r"debit", r"withdrawal", r"withdrawal\s*amt", r"withdrawal\s*amount",
         r"debit\s*amt", r"debit\s*amount", r"^dr\.$", r"amount\s*debited", r"paid\s*out"
     ],
     "credit": [
-        r"^cr$", r"^credit$", r"deposit", r"deposit\s*amt", r"deposit\s*amount",
+        r"^cr$", r"^cr\b", r"\bcr\b", r"credit", r"deposit", r"deposit\s*amt", r"deposit\s*amount",
         r"credit\s*amt", r"credit\s*amount", r"^cr\.$", r"amount\s*credited", r"paid\s*in"
     ],
     "amount": [
         r"^amount$", r"net\s*amount", r"txn\s*amount", r"transaction\s*amount", r"^amt$", r"total"
     ],
+    "indicator": [
+        r"^cr\s*/\s*dr$", r"^dr\s*/\s*cr$", r"^cr/dr$", r"^dr/cr$", r"^type$", r"^txn\s*type$",
+        r"^transaction\s*type$", r"^indicator$", r"cr\s*dr", r"dr\s*cr"
+    ],
     "ref": [
         r"chqno", r"chq\s*/\s*ref", r"ref\s*no", r"cheque\s*no", r"reference",
-        r"utr", r"txn\s*ref", r"chq\s*no", r"ref\s*number"
+        r"utr", r"txn\s*ref", r"chq\s*no", r"ref\s*number", r"bill\s*/\s*chq\s*no", r"bill/chq"
     ],
     "balance": [
         r"^bal$", r"balance", r"closing\s*balance", r"closing\s*bal", r"running\s*balance"
@@ -131,31 +135,36 @@ BANK_PATTERNS = {
 DEMAT_PATTERNS = {
     "symbol": [
         r"^tradingsymbol$", r"^symbol$", r"scrip\s*name", r"stock\s*name",
-        r"scheme\s*name", r"^instrument$", r"^security$", r"^ticker$"
+        r"scheme\s*name", r"^instrument$", r"^security$", r"^ticker$",
+        r"fund\s*name", r"^isin$"
     ],
     "name": [
-        r"stock\s*name", r"scheme\s*name", r"company\s*name", r"scrip\s*name", r"^name$"
+        r"fund\s*name", r"stock\s*name", r"scheme\s*name", r"company\s*name", r"scrip\s*name", r"^name$"
     ],
     "qty": [
         r"^qty$", r"^quantity$", r"^shares$", r"^units$", r"trade\s*qty", r"total\s*quantity"
     ],
     "buy_price": [
-        r"avg\s*price", r"buy\s*price", r"average\s*price", r"buy\s*avg", r"^price$", r"trade\s*price", r"purchase\s*price"
+        r"avg\s*price", r"buy\s*price", r"average\s*price", r"buy\s*avg", r"^price$", r"trade\s*price",
+        r"purchase\s*price", r"average\s*nav", r"avg\s*nav", r"execution\s*price"
     ],
     "curr_price": [
-        r"current\s*price", r"^cmp$", r"^nav$", r"market\s*price", r"last\s*price", r"^ltp$", r"close\s*price"
+        r"current\s*price", r"^cmp$", r"^nav$", r"market\s*price", r"last\s*price", r"^ltp$", r"close\s*price",
+        r"nav\s*as\s*on"
     ],
     "invested": [
-        r"invested\s*val", r"invested\s*amount", r"total\s*invested", r"trade\s*val", r"net\s*amount", r"investment\s*value"
+        r"invested\s*val", r"invested\s*amount", r"total\s*invested", r"trade\s*val", r"net\s*amount",
+        r"investment\s*value", r"order\s*val"
     ],
     "current_val": [
-        r"current\s*val", r"present\s*val", r"market\s*val", r"total\s*current\s*value", r"valuation"
+        r"current\s*val", r"present\s*val", r"market\s*val", r"total\s*current\s*value", r"valuation",
+        r"value\s*as\s*on"
     ],
     "date": [
-        r"trade\s*date", r"buy\s*date", r"order\s*execution", r"^date$"
+        r"trade\s*date", r"buy\s*date", r"order\s*execution", r"order\s*date", r"^date$"
     ],
     "type": [
-        r"trade\s*type", r"transaction\s*type", r"order\s*type", r"buy/sell", r"^type$"
+        r"trade\s*type", r"transaction\s*type", r"order\s*type", r"buy/sell", r"^action$", r"^type$"
     ]
 }
 
@@ -287,8 +296,12 @@ def is_demat_format(cols: list) -> bool:
     """Detects if columns indicate Demat/trading statements rather than regular bank accounts."""
     c_lower = " ".join([str(c).strip().lower() for c in cols])
     has_qty = any(k in c_lower for k in ["quantity", "qty", "shares", "units"])
-    has_symbol = any(k in c_lower for k in ["symbol", "ticker", "scrip", "stock name", "scheme name", "instrument", "tradingsymbol"])
-    return has_qty and has_symbol
+    has_symbol = any(k in c_lower for k in [
+        "symbol", "ticker", "scrip", "stock name", "scheme name", "instrument",
+        "tradingsymbol", "fund name", "isin"
+    ])
+    has_demat_cues = any(k in c_lower for k in ["unrealized p&l", "folio no", "avg nav", "average nav", "invested value", "order value"])
+    return (has_qty and has_symbol) or has_demat_cues
 
 def read_file_to_dataframe(file_bytes: bytes, file_name: str) -> pd.DataFrame:
     """
@@ -331,18 +344,30 @@ def read_file_to_dataframe(file_bytes: bytes, file_name: str) -> pd.DataFrame:
             target_sheet = xl.sheet_names[0]
             for s in xl.sheet_names:
                 s_low = s.lower()
-                if any(k in s_low for k in ["statement", "transaction", "bank", "holding", "trade", "order", "ledger"]):
+                if any(k in s_low for k in ["statement", "transaction", "bank", "holding", "trade", "order", "ledger", "fund"]):
                     target_sheet = s
                     break
 
             raw_df = xl.parse(target_sheet, header=None)
             header_idx = 0
-            keywords = ["tran date", "txn date", "date", "particulars", "narration", "description", "debit", "credit", "amount", "symbol", "quantity"]
-            for idx in range(min(30, len(raw_df))):
+            # 1. First check if a definitive Demat/Holdings header row exists (e.g. Angel One, Groww Trade Book)
+            for idx in range(min(40, len(raw_df))):
                 row_str = " ".join([str(v).lower() for v in raw_df.iloc[idx].tolist() if pd.notna(v)])
-                if sum(1 for kw in keywords if kw in row_str) >= 2:
+                if ("fund name" in row_str and ("isin" in row_str or "units" in row_str or "nav" in row_str)) or ("symbol" in row_str and "quantity" in row_str):
                     header_idx = idx
                     break
+            else:
+                # 2. General banking / ledger header scanner
+                keywords = [
+                    "tran date", "txn date", "date", "particulars", "narration", "description",
+                    "debit", "credit", "amount", "symbol", "quantity", "fund name", "isin",
+                    "units", "average nav", "nav", "invested value", "folio"
+                ]
+                for idx in range(min(40, len(raw_df))):
+                    row_str = " ".join([str(v).lower() for v in raw_df.iloc[idx].tolist() if pd.notna(v)])
+                    if sum(1 for kw in keywords if kw in row_str) >= 2:
+                        header_idx = idx
+                        break
 
             df = xl.parse(target_sheet, skiprows=header_idx)
             df.columns = [str(c).strip() for c in df.columns]
@@ -369,7 +394,7 @@ def read_file_to_dataframe(file_bytes: bytes, file_name: str) -> pd.DataFrame:
     except Exception:
         pass
 
-    # 2. Multi-encoding decode with preamble scan and delimiter detection
+    # 2. Multi-encoding decode with preamble scan, quote sanitization, footer truncation, and delimiter detection
     encodings = ["utf-8-sig", "utf-8", "cp1252", "latin1", "iso-8859-1"]
     decoded_text = None
     for enc in encodings:
@@ -383,33 +408,103 @@ def read_file_to_dataframe(file_bytes: bytes, file_name: str) -> pd.DataFrame:
         decoded_text = file_bytes.decode("latin1", errors="ignore")
 
     lines = decoded_text.splitlines()
-    keywords = ["date", "particulars", "description", "narration", "debit", "credit", "dr", "cr", "amount", "balance", "symbol", "qty", "instrument"]
+    keywords = [
+        "tran date", "txn date", "date", "particulars", "narration", "description",
+        "debit", "credit", "dr", "cr", "withdrawal", "deposit", "amount", "balance",
+        "symbol", "qty", "instrument", "tradingsymbol", "chqno", "chq", "fund name",
+        "isin", "units", "nav"
+    ]
     header_idx = 0
-    for idx, line in enumerate(lines[:35]):
+    # Scan up to 120 lines to skip long preambles (Name, Address, Nominee, IFSC, etc.)
+    for idx, line in enumerate(lines[:120]):
         line_low = line.lower()
+        if ("fund name" in line_low and ("isin" in line_low or "units" in line_low or "nav" in line_low)) or ("symbol" in line_low and "quantity" in line_low):
+            header_idx = idx
+            break
         matches = sum(1 for kw in keywords if re.search(r"\b" + kw + r"\b", line_low))
         if matches >= 2:
             header_idx = idx
             break
 
-    csv_text = "\n".join(lines[header_idx:])
+    header_line = lines[header_idx] if header_idx < len(lines) else ""
     sep = ","
-    if header_idx < len(lines):
-        h_line = lines[header_idx]
-        if h_line.count(";") > h_line.count(","):
-            sep = ";"
-        elif h_line.count("\t") > h_line.count(","):
-            sep = "\t"
-        elif h_line.count("|") > h_line.count(","):
-            sep = "|"
+    if header_line.count(";") > header_line.count(","):
+        sep = ";"
+    elif header_line.count("\t") > header_line.count(","):
+        sep = "\t"
+    elif header_line.count("|") > header_line.count(","):
+        sep = "|"
 
+    table_lines = lines[header_idx:]
+
+    # Footer markers that appear after all transaction rows
+    footer_markers = [
+        "*** end", "end of statement", "abbreviations", "legends:", "legends /",
+        "disclaimer", "registered office", "this is a computer generated",
+        "page total", "statement summary", "important information"
+    ]
+
+    cleaned_table_lines = []
+    for line in table_lines:
+        line_str = line.strip()
+        if not line_str:
+            continue
+        line_low = line_str.lower()
+        # Stop at footer / disclaimer rows
+        if any(marker in line_low for marker in footer_markers):
+            break
+        # Fix unclosed quotes in transaction descriptions or footers (odd number of quotes)
+        if line.count('"') % 2 != 0:
+            line = line.replace('"', '')
+        cleaned_table_lines.append(line)
+
+    cleaned_csv = "\n".join(cleaned_table_lines)
+
+    # Multi-engine parsing fallbacks to guarantee no EOF inside string or tokenizing failure
+    df = None
+    # Attempt A: Standard parse on cleaned CSV
     try:
-        df = pd.read_csv(io.StringIO(csv_text), sep=sep, on_bad_lines="skip")
+        df = pd.read_csv(io.StringIO(cleaned_csv), sep=sep, on_bad_lines="skip")
     except Exception:
-        df = pd.read_csv(io.StringIO(decoded_text), on_bad_lines="skip")
+        df = None
 
-    df.columns = [str(c).strip() for c in df.columns]
-    return df
+    # Attempt B: QUOTE_NONE parse (ignores quotation marks entirely, preventing any unclosed quote errors)
+    if df is None or df.empty or not (resolve_bank_columns(df.columns).get("date") or is_demat_format(df.columns)):
+        try:
+            df = pd.read_csv(io.StringIO(cleaned_csv), sep=sep, quoting=csv.QUOTE_NONE, on_bad_lines="skip")
+        except Exception:
+            df = None
+
+    # Attempt C: Python engine with quotechar disabled
+    if df is None or df.empty or not (resolve_bank_columns(df.columns).get("date") or is_demat_format(df.columns)):
+        try:
+            df = pd.read_csv(io.StringIO(cleaned_csv), sep=sep, engine="python", quoting=csv.QUOTE_NONE, on_bad_lines="skip")
+        except Exception:
+            df = None
+
+    # Attempt D: Fallback to line-by-line csv.reader with QUOTE_NONE
+    if df is None or df.empty:
+        try:
+            raw_reader = csv.reader(cleaned_table_lines, delimiter=sep, quoting=csv.QUOTE_NONE)
+            parsed_rows = [r for r in raw_reader if any(r)]
+            if parsed_rows:
+                headers = [str(c).strip() for c in parsed_rows[0]]
+                data_rows = parsed_rows[1:]
+                max_c = len(headers)
+                normalized_rows = []
+                for r in data_rows:
+                    if len(r) < max_c:
+                        r = r + [""] * (max_c - len(r))
+                    normalized_rows.append(r[:max_c])
+                df = pd.DataFrame(normalized_rows, columns=headers)
+        except Exception:
+            df = pd.DataFrame()
+
+    if df is not None and not df.empty:
+        df.columns = [str(c).strip() for c in df.columns]
+        return df
+
+    return pd.DataFrame()
 
 def find_column_val(row: pd.Series, candidate_cols: list[str], default="") -> str:
     """Finds the first available column matching candidate list in row."""
@@ -474,6 +569,7 @@ def parse_statement(file_bytes: bytes, file_name: str, bank_type: str = "DEFAULT
     withdrawal_col = None
     deposit_col = None
     amount_col = None
+    indicator_col = None
     ref_col = None
 
     # Check if template columns match the actual dataframe
@@ -494,6 +590,7 @@ def parse_statement(file_bytes: bytes, file_name: str, bank_type: str = "DEFAULT
         withdrawal_col = template.get("withdrawal_col")
         deposit_col = template.get("deposit_col")
         amount_col = template.get("amount_col")
+        indicator_col = template.get("indicator_col")
         ref_col = template.get("ref_col")
         date_format = template.get("date_format")
     else:
@@ -504,6 +601,7 @@ def parse_statement(file_bytes: bytes, file_name: str, bank_type: str = "DEFAULT
         debit_col = resolved.get("debit")
         credit_col = resolved.get("credit")
         amount_col = resolved.get("amount")
+        indicator_col = resolved.get("indicator")
         ref_col = resolved.get("ref")
         date_format = None
 
@@ -548,6 +646,14 @@ def parse_statement(file_bytes: bytes, file_name: str, bank_type: str = "DEFAULT
             if not desc or desc.lower() == "nan":
                 continue
 
+            # If Segment Type exists (e.g. STOCKS_SETTLEMENT, GROWW_WITHDRAW, UPI), prepend it for readability
+            for seg_col in ["Segment Type", "Transaction Type", "Txn Type"]:
+                if seg_col in row and row[seg_col] and str(row[seg_col]).strip() not in ("nan", "-", "--", ""):
+                    seg_val = str(row[seg_col]).strip()
+                    if seg_val.lower() not in desc.lower() and seg_val.lower() not in ("bill", "jv", "payment"):
+                        desc = f"{seg_val}: {desc}"
+                    break
+
             # 3. Parse Amount and Transaction Type
             amount = Decimal("0.00")
             tx_type = "EXPENSE"
@@ -575,15 +681,33 @@ def parse_statement(file_bytes: bytes, file_name: str, bank_type: str = "DEFAULT
                 else:
                     continue
             elif amount_col and amount_col in row:
-                val = clean_decimal(row.get(amount_col, 0))
-                if val < 0:
-                    amount = abs(val)
+                raw_amt_str = str(row.get(amount_col, "")).strip()
+                val = clean_decimal(raw_amt_str)
+                amount = abs(val)
+                if amount == 0:
+                    continue
+
+                raw_amt_lower = raw_amt_str.lower()
+                ind_str = str(row.get(indicator_col, "")).strip().lower() if indicator_col and indicator_col in row else ""
+
+                if ind_str in ("dr", "debit", "wdl", "withdrawal", "payment", "out", "pay", "d"):
+                    tx_type = "EXPENSE"
+                elif ind_str in ("cr", "credit", "dep", "deposit", "receipt", "in", "c"):
+                    tx_type = "INCOME"
+                elif raw_amt_lower.endswith("dr") or "(dr)" in raw_amt_lower or (raw_amt_str.startswith("(") and raw_amt_str.endswith(")")):
+                    tx_type = "EXPENSE"
+                elif raw_amt_lower.endswith("cr") or "(cr)" in raw_amt_lower:
+                    tx_type = "INCOME"
+                elif val < 0:
                     tx_type = "EXPENSE"
                 elif val > 0:
-                    amount = val
-                    tx_type = "INCOME"
-                else:
-                    continue
+                    desc_lower = desc.lower()
+                    if any(k in desc_lower for k in ["salary", "stipend", "interest received", "dividend", "refund", "cashback", "deposited", "credit"]):
+                        tx_type = "INCOME"
+                    elif any(k in desc_lower for k in ["paid to", "payment to", "withdrawal", "purchase", "debited", "charges", "fees"]):
+                        tx_type = "EXPENSE"
+                    else:
+                        tx_type = "EXPENSE"
             else:
                 continue
 
@@ -652,7 +776,7 @@ def parse_demat_dataframe(df: pd.DataFrame, template: dict) -> tuple[list[dict],
     for _, row in df.iterrows():
         try:
             symbol = find_column_val(row, symbol_cols)
-            if not symbol or symbol.lower() == "nan":
+            if not symbol or symbol.lower() in ("nan", "total", "grand total", "summary", "-", "--"):
                 continue
 
             qty = find_column_decimal(row, qty_cols)
@@ -679,13 +803,17 @@ def parse_demat_dataframe(df: pd.DataFrame, template: dict) -> tuple[list[dict],
             trade_date = parse_date_flexible(raw_date) or date.today()
 
             # Name and Symbol detection
-            name_val = find_column_val(row, ["Stock Name", "Scheme Name", "Company Name", "Scrip Name", "Name", "Instrument"]) or symbol
-            ticker_val = find_column_val(row, ["Symbol", "Tradingsymbol", "Ticker"]) or symbol.split()[0].upper()
+            name_val = find_column_val(row, ["Fund Name", "Stock Name", "Scheme Name", "Company Name", "Scrip Name", "Name", "Instrument"]) or symbol
+            isin_val = find_column_val(row, ["ISIN", "isin"])
+            if isin_val and isin_val.lower() not in ("nan", "-", ""):
+                ticker_val = isin_val
+            else:
+                ticker_val = find_column_val(row, ["Symbol", "Tradingsymbol", "Ticker"]) or symbol.split()[0].upper()
 
             # Determine Asset Class from row context
             row_text = (" ".join([str(v) for v in row.values if pd.notna(v)]) + f" {symbol} {name_val}").lower()
             asset_class = "STOCK"
-            if any(k in row_text for k in ["fund", "mf", "growth", "direct", "index", "parag", "quant", "uti", "mirae", "axis", "ppfas"]):
+            if any(k in row_text for k in ["fund", "mf", "growth", "direct", "index", "parag", "quant", "uti", "mirae", "axis", "ppfas", "fof"]):
                 if "elss" in row_text or "tax" in row_text:
                     asset_class = "ELSS"
                 elif "index" in row_text or "nifty" in row_text:
@@ -718,10 +846,10 @@ def parse_demat_dataframe(df: pd.DataFrame, template: dict) -> tuple[list[dict],
             if tx_amount > 0:
                 transactions.append({
                     "date": trade_date,
-                    "description": f"Demat {raw_type}: {symbol} ({broker})",
+                    "description": f"Demat {raw_type}: {name_val} ({broker})",
                     "amount": tx_amount,
                     "type": tx_type,
-                    "reference_number": f"{broker.upper()}-{symbol.replace(' ', '')[:8]}-{trade_date.strftime('%Y%m%d')}",
+                    "reference_number": f"{broker.upper()}-{ticker_val.replace(' ', '')[:8]}-{trade_date.strftime('%Y%m%d')}",
                     "tags": f"Investment, Stock, {broker}, {asset_class}"
                 })
         except Exception:
@@ -731,45 +859,68 @@ def parse_demat_dataframe(df: pd.DataFrame, template: dict) -> tuple[list[dict],
 
 def parse_demat_statement(file_bytes: bytes, file_name: str, broker_type: str = "GROWW_DEMAT") -> tuple[list[dict], list[dict]]:
     """Parses raw bytes from a Demat statement file."""
-    template = BANK_TEMPLATES.get(broker_type, BANK_TEMPLATES["GROWW_DEMAT"])
-    if file_name.endswith(".xlsx") or file_name.endswith(".xls"):
-        engine = "xlrd" if file_name.endswith(".xls") else "openpyxl"
-        try:
-            df = pd.read_excel(io.BytesIO(file_bytes), engine=engine)
-        except Exception:
-            df = read_file_to_dataframe(file_bytes, file_name)
-    else:
-        try:
-            df = pd.read_csv(io.BytesIO(file_bytes))
-        except Exception:
-            df = read_file_to_dataframe(file_bytes, file_name)
-
+    file_name_lower = file_name.lower()
+    df = read_file_to_dataframe(file_bytes, file_name)
     df.columns = [str(c).strip() for c in df.columns]
+
+    # Auto-detect Angel One if file contains Angel One cues
+    if "angel" in file_name_lower or any("angel" in str(c).lower() for c in df.columns) or any(k in df.columns for k in ["Fund Name", "Average NAV"]):
+        broker_type = "ANGELONE_DEMAT"
+    elif "groww" in file_name_lower:
+        broker_type = "GROWW_DEMAT"
+
+    template = BANK_TEMPLATES.get(broker_type, BANK_TEMPLATES["GROWW_DEMAT"])
     return parse_demat_dataframe(df, template)
 
 def import_statement_transactions(db: Session, account_id: int, transactions_data: list[dict]) -> int:
     """
-    Saves parsed statement transactions into the database. Deduplicates based on date, description, and amount.
+    Saves parsed statement transactions into the database using high-speed bulk in-memory deduplication.
+    Deduplicates based on (date, amount, reference_number/description).
     Adjusts the parent account current balance based on transaction activity.
     """
     account = db.query(Account).filter(Account.id == account_id).first()
     if not account:
         return 0
 
-    imported_count = 0
-    for data in transactions_data:
-        duplicate_query = db.query(Transaction).filter(
-            Transaction.account_id == account_id,
-            Transaction.date == data["date"],
-            Transaction.amount == data["amount"]
-        )
-        if data.get("reference_number"):
-            duplicate = duplicate_query.filter(Transaction.reference_number == data["reference_number"]).first()
-        else:
-            duplicate = duplicate_query.filter(Transaction.description == data["description"]).first()
+    if not transactions_data:
+        return 0
 
-        if duplicate:
+    # 1. Fetch all existing transaction signatures for this account in 1 single bulk query
+    existing_recs = db.query(
+        Transaction.date,
+        Transaction.amount,
+        Transaction.reference_number,
+        Transaction.description
+    ).filter(Transaction.account_id == account_id).all()
+
+    existing_set = set()
+    for r_date, r_amount, r_ref, r_desc in existing_recs:
+        amt_str = f"{Decimal(str(r_amount)):.2f}"
+        date_str = str(r_date)
+        if r_ref:
+            existing_set.add((date_str, amt_str, str(r_ref).strip()))
+        if r_desc:
+            existing_set.add((date_str, amt_str, str(r_desc).strip()))
+
+    new_tx_objects = []
+    balance_delta = Decimal("0.00")
+
+    for data in transactions_data:
+        t_date_str = str(data["date"])
+        t_amt_str = f"{Decimal(str(data['amount'])):.2f}"
+        t_ref = str(data.get("reference_number", "")).strip() if data.get("reference_number") else ""
+        t_desc = str(data.get("description", "")).strip()
+
+        # Check deduplication
+        if t_ref and (t_date_str, t_amt_str, t_ref) in existing_set:
             continue
+        if (t_date_str, t_amt_str, t_desc) in existing_set:
+            continue
+
+        # Add to existing set to avoid duplicates within the same statement file
+        if t_ref:
+            existing_set.add((t_date_str, t_amt_str, t_ref))
+        existing_set.add((t_date_str, t_amt_str, t_desc))
 
         tx = Transaction(
             date=data["date"],
@@ -780,20 +931,20 @@ def import_statement_transactions(db: Session, account_id: int, transactions_dat
             reference_number=data.get("reference_number"),
             tags=data.get("tags")
         )
-        db.add(tx)
+        new_tx_objects.append(tx)
 
-        # Adjust account balance
+        # Track account balance changes
         if data["type"] == "INCOME":
-            account.current_balance += data["amount"]
-        elif data["type"] in ["EXPENSE", "INVESTMENT", "SAVINGS"]:
-            account.current_balance -= data["amount"]
+            balance_delta += data["amount"]
+        elif data["type"] in ["EXPENSE", "INVESTMENT", "SAVINGS", "LOAN", "TAX"]:
+            balance_delta -= data["amount"]
 
-        imported_count += 1
-
-    if imported_count > 0:
+    if new_tx_objects:
+        db.add_all(new_tx_objects)
+        account.current_balance += balance_delta
         db.commit()
 
-    return imported_count
+    return len(new_tx_objects)
 
 def import_demat_holdings(db: Session, user_id: int, account_id: int, file_bytes: bytes, file_name: str, broker_type: str = "GROWW_DEMAT") -> dict:
     """

@@ -360,6 +360,14 @@
                     <div class="flex items-center gap-2 text-on-surface-variant text-xs font-bold uppercase tracking-wider">
                         <span class="material-symbols-outlined text-sm">filter_list</span> Filters:
                     </div>
+                    <!-- Timeframe Scope Filter -->
+                    <div class="flex items-center gap-1 bg-surface-container-high/60 p-1 rounded-lg border border-outline-variant">
+                        <button id="timeframe-btn-30d" class="px-2.5 py-1 text-xs font-bold rounded-md bg-primary text-white shadow-sm transition-all" onclick="setTimeframeFilter('30d')">⚡ Past 30 Days (Fast)</button>
+                        <button id="timeframe-btn-90d" class="px-2.5 py-1 text-xs font-semibold rounded-md text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-all" onclick="setTimeframeFilter('90d')">3 Months</button>
+                        <button id="timeframe-btn-180d" class="px-2.5 py-1 text-xs font-semibold rounded-md text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-all" onclick="setTimeframeFilter('180d')">6 Months</button>
+                        <button id="timeframe-btn-all" class="px-2.5 py-1 text-xs font-semibold rounded-md text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-all" onclick="setTimeframeFilter('all')">All Stored Data</button>
+                    </div>
+                    <span id="tx-count-badge" class="px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold bg-primary/10 text-primary border border-primary/20">Showing Past 30 Days</span>
                     <!-- Search Input -->
                     <input id="ledger-search" class="px-3 py-1.5 bg-surface-container-low border border-outline-variant rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary w-60" placeholder="Search merchant description..." type="text"/>
                     <!-- Account Filter -->
@@ -626,6 +634,71 @@
                         <button class="w-full py-3 bg-secondary-container text-on-secondary-container font-bold text-xs rounded-lg flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-transform" onclick="showToast('Tax-Ready PDF Exported successfully to system downloads!', 'success')">
                             <span class="material-symbols-outlined">download</span> Export Tax-Ready Report
                         </button>
+                    </div>
+
+                    <!-- Dual Regime Statutory Tax Comparison (Finance Act 2024) -->
+                    <div class="col-span-12 bg-white border border-outline-variant rounded-xl p-6 shadow-sm">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-outline-variant">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary">gavel</span>
+                                    <h3 class="text-base font-bold text-primary">Statutory Indian Tax Comparison (Finance Act 2024)</h3>
+                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary-container text-on-primary-container">Legal Compliance</span>
+                                </div>
+                                <p class="text-xs text-on-surface-variant mt-1">Official side-by-side computation: New Tax Regime (Section 115BAC) vs. Old Tax Regime with Chapter VI-A deductions.</p>
+                            </div>
+                            <div id="fy-regime-recommendation-badge" class="px-4 py-2 rounded-lg bg-secondary-container text-on-secondary-container font-bold text-xs flex items-center gap-2">
+                                <span class="material-symbols-outlined text-sm">verified</span> Recommended Regime: Calculating...
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                            <!-- New Regime Box -->
+                            <div class="p-5 rounded-xl border border-primary/20 bg-primary/[0.02] flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-center mb-3">
+                                        <span class="font-bold text-sm text-primary flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined text-base text-secondary">verified</span> New Tax Regime (Default u/s 115BAC)
+                                        </span>
+                                        <span class="text-[10px] bg-secondary/10 text-secondary font-bold px-2 py-0.5 rounded">Std Ded ₹75,000</span>
+                                    </div>
+                                    <div class="space-y-2 py-2">
+                                        <div class="flex justify-between text-on-surface-variant"><span>Gross Income:</span><span id="tax-new-gross" class="font-bold font-data-mono">₹0</span></div>
+                                        <div class="flex justify-between text-on-surface-variant"><span>Standard Deduction:</span><span id="tax-new-std-ded" class="font-bold font-data-mono">₹75,000</span></div>
+                                        <div class="flex justify-between text-on-surface-variant"><span>Net Taxable Income:</span><span id="tax-new-taxable" class="font-bold font-data-mono">₹0</span></div>
+                                        <div class="flex justify-between text-on-surface-variant"><span>Slab Tax Payable:</span><span id="tax-new-slab-tax" class="font-bold font-data-mono">₹0</span></div>
+                                        <div class="flex justify-between text-secondary"><span>Section 87A Rebate:</span><span id="tax-new-rebate" class="font-bold font-data-mono">-₹0</span></div>
+                                        <div class="flex justify-between text-on-surface-variant"><span>Health & Education Cess (4%):</span><span id="tax-new-cess" class="font-bold font-data-mono">₹0</span></div>
+                                    </div>
+                                </div>
+                                <div class="pt-3 border-t border-outline-variant flex justify-between items-center mt-3">
+                                    <span class="font-bold text-primary text-sm">Total Tax Liability (New):</span>
+                                    <span id="tax-new-total" class="font-extrabold text-lg font-data-mono text-primary">₹0</span>
+                                </div>
+                            </div>
+
+                            <!-- Old Regime Box -->
+                            <div class="p-5 rounded-xl border border-outline-variant bg-surface-container-low flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-center mb-3">
+                                        <span class="font-bold text-sm text-primary">Old Tax Regime</span>
+                                        <span class="text-[10px] bg-outline-variant text-on-surface-variant font-bold px-2 py-0.5 rounded">Std Ded ₹50k + 80C Cap</span>
+                                    </div>
+                                    <div class="space-y-2 py-2">
+                                        <div class="flex justify-between text-on-surface-variant"><span>Gross Income:</span><span id="tax-old-gross" class="font-bold font-data-mono">₹0</span></div>
+                                        <div class="flex justify-between text-on-surface-variant"><span>Standard Deduction:</span><span id="tax-old-std-ded" class="font-bold font-data-mono">₹50,000</span></div>
+                                        <div class="flex justify-between text-on-surface-variant"><span>Section 80C Deduction (Capped ₹1.5L):</span><span id="tax-old-80c" class="font-bold font-data-mono">₹0</span></div>
+                                        <div class="flex justify-between text-on-surface-variant"><span>Section 80D / NPS 80CCD(1B):</span><span id="tax-old-other-ded" class="font-bold font-data-mono">₹0</span></div>
+                                        <div class="flex justify-between text-on-surface-variant"><span>Net Taxable Income:</span><span id="tax-old-taxable" class="font-bold font-data-mono">₹0</span></div>
+                                        <div class="flex justify-between text-secondary"><span>Section 87A Rebate:</span><span id="tax-old-rebate" class="font-bold font-data-mono">-₹0</span></div>
+                                        <div class="flex justify-between text-on-surface-variant"><span>Health & Education Cess (4%):</span><span id="tax-old-cess" class="font-bold font-data-mono">₹0</span></div>
+                                    </div>
+                                </div>
+                                <div class="pt-3 border-t border-outline-variant flex justify-between items-center mt-3">
+                                    <span class="font-bold text-primary text-sm">Total Tax Liability (Old):</span>
+                                    <span id="tax-old-total" class="font-extrabold text-lg font-data-mono text-primary">₹0</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1064,6 +1137,46 @@
                             </h3>
                             <div id="inv-asset-distribution" class="space-y-3">
                                 <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Statutory Capital Gains Tax (Finance Act 2024: 111A & 112A) -->
+                        <div class="bg-white border border-outline-variant rounded-xl p-5 shadow-sm">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-sm text-secondary">account_balance_wallet</span> Statutory Capital Gains Tax
+                                </h3>
+                                <span class="text-[9px] bg-secondary-container text-on-secondary-container font-bold px-1.5 py-0.5 rounded">Finance Act 2024</span>
+                            </div>
+                            <div class="space-y-2.5 text-xs">
+                                <div class="p-2.5 bg-surface-container-low rounded-lg border border-outline-variant/60">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="font-bold text-primary">STCG (Holding &le; 365d)</span>
+                                        <span class="font-bold text-primary font-data-mono" id="inv-stcg-tax">₹0</span>
+                                    </div>
+                                    <div class="flex justify-between text-[11px] text-on-surface-variant">
+                                        <span>Net Gain: <strong id="inv-stcg-gain">₹0</strong></span>
+                                        <span>Rate: <strong>20.0% u/s 111A</strong></span>
+                                    </div>
+                                </div>
+                                <div class="p-2.5 bg-surface-container-low rounded-lg border border-outline-variant/60">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="font-bold text-primary">LTCG (Holding &gt; 365d)</span>
+                                        <span class="font-bold text-primary font-data-mono" id="inv-ltcg-tax">₹0</span>
+                                    </div>
+                                    <div class="flex justify-between text-[11px] text-on-surface-variant">
+                                        <span>Net Gain: <strong id="inv-ltcg-gain">₹0</strong></span>
+                                        <span>Rate: <strong>12.5% u/s 112A</strong></span>
+                                    </div>
+                                    <div class="flex justify-between text-[10px] text-secondary mt-1 pt-1 border-t border-outline-variant/30">
+                                        <span>Statutory Exemption:</span>
+                                        <span class="font-bold font-data-mono">₹1,25,000 / FY</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center pt-2 border-t border-outline-variant text-xs">
+                                    <span class="font-bold text-primary">Total Gains Tax (+4% Cess):</span>
+                                    <span id="inv-total-gains-tax" class="font-extrabold text-sm font-data-mono text-error">₹0</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2051,6 +2164,15 @@
             <div class="flex justify-end gap-2 pt-4 border-t border-outline-variant">
                 <button type="button" class="px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:opacity-90 transition-all" onclick="closeModal('support-modal')">Close Guide</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Floating Background Task Indicator (Parallel non-blocking ingestion) -->
+    <div id="bg-task-indicator" class="fixed bottom-6 right-6 z-50 hidden bg-slate-900 text-white shadow-2xl rounded-2xl p-4 border border-slate-700/80 backdrop-blur-md max-w-sm items-center gap-3 animate-fade-in transition-all">
+        <div class="w-6 h-6 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin flex-shrink-0"></div>
+        <div class="flex-1 min-w-0">
+            <p class="font-bold text-xs text-white truncate" id="bg-task-title">Ingesting Statement...</p>
+            <p class="text-[11px] text-slate-300 truncate" id="bg-task-desc">Processing in background. Feel free to browse or navigate.</p>
         </div>
     </div>
 

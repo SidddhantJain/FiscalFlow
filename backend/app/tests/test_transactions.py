@@ -310,3 +310,61 @@ def test_import_statement_empty_file_rejected(client):
     assert res.status_code == 400
     assert "Uploaded statement file is empty" in res.json()["detail"]
 
+
+def test_import_statement_with_unclosed_quote_at_row_649_and_preamble(client):
+    """Verifies that statements with extensive preambles and unclosed quotes at row 649 (EOF inside string) parse successfully."""
+    acc_res = client.post("/accounts/", json={
+        "name": "Axis Salary Account",
+        "bank_name": "Axis Bank",
+        "account_type": "SALARY",
+        "opening_balance": 15000.00
+    })
+    account_id = acc_res.json()["id"]
+
+    preamble = [
+        "Name :- SIDDHANT SHREYANS MISHRIKOTKAR",
+        "Joint Holder :- -",
+        "C/O SHREYANS NARENDRA 1501 N",
+        "WING 57 MIDTOWN PHOENIX M WAKAD",
+        "PUNE-411057",
+        "MAHARASHTRA-INDIA",
+        "Currency :- INR",
+        "Customer ID :- 907471763",
+        "IFSC Code :- UTIB0000135",
+        "MICR Code :- 413211101",
+        "Nominee Registered :- Y",
+        "Nominee Name :- SHREYANS MISHRIKOTKAR",
+        "Registered Mobile No :- XXXXXX2306",
+        "Registered Email ID :- MIXXXXNT@GMAIL.COM",
+        "PAN :- FYDPM2178F",
+        "CKYC NUMBER :- XXXXXXXXXX2479",
+        "",
+        "Tran Date,CHQNO,PARTICULARS,DR,CR,BAL,SOL"
+    ]
+
+    tx_rows = []
+    # Generate 630 transactions up to row 648
+    for i in range(1, 631):
+        tx_rows.append(f"01-10-2024,-,UPI TRANSACTION {i},,100.00,50000.00,001")
+
+    # Row 649: unclosed quote in footer disclaimer
+    footer = [
+        '*** "END OF STATEMENT - SYSTEM GENERATED STATEMENT',
+        "Disclaimer: In case of discrepancy please report within 14 days",
+        "Abbreviations: CR-Credit DR-Debit"
+    ]
+
+    full_csv = "\n".join(preamble + tx_rows + footer).encode("utf-8")
+
+    res = client.post(
+        "/transactions/import",
+        data={"account_id": account_id, "bank_type": "AUTO_DETECT"},
+        files={"file": ("axis_649_unclosed.csv", full_csv, "text/csv")}
+    )
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["transaction_count"] == 630
+    assert "Successfully parsed 630 transactions" in data["message"]
+
+
