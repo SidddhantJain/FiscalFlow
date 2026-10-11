@@ -223,6 +223,9 @@ function renderTabContent(tabName) {
         case 'dashboard':
             renderDashboardTab();
             break;
+        case 'accounts':
+            renderAccountsTab();
+            break;
         case 'transactions':
             renderTransactionsTab();
             break;
@@ -449,26 +452,41 @@ function renderDashboardTab() {
         accountsGrid.innerHTML = '';
         if (state.accounts.length === 0) {
             accountsGrid.innerHTML = `
-                <div class="col-span-12 py-8 text-center text-on-surface-variant text-body-sm">
-                    No accounts found. Click the + button in the appbar to add your bank account.
+                <div class="col-span-12 py-8 text-center text-on-surface-variant text-body-sm bg-surface-container-low rounded-xl border border-dashed border-outline-variant">
+                    No accounts found. Click the "Add Bank / Demat Account" button to add your first account.
                 </div>`;
         } else {
             state.accounts.forEach(acc => {
                 let icon = 'account_balance';
-                if (acc.account_type === 'WALLET') icon = 'payments';
-                if (acc.account_type === 'INVESTMENT') icon = 'show_chart';
-                if (acc.account_type === 'CREDIT_CARD') icon = 'credit_card';
+                let badgeClass = 'bg-emerald-100 text-emerald-800';
+                if (acc.account_type === 'WALLET') { icon = 'payments'; badgeClass = 'bg-amber-100 text-amber-800'; }
+                if (acc.account_type === 'INVESTMENT' || acc.account_type === 'DEMAT') { icon = 'trending_up'; badgeClass = 'bg-indigo-100 text-indigo-800'; }
+                if (acc.account_type === 'CREDIT_CARD') { icon = 'credit_card'; badgeClass = 'bg-rose-100 text-rose-800'; }
+                if (acc.account_type === 'SALARY') { icon = 'work'; badgeClass = 'bg-blue-100 text-blue-800'; }
+
+                const accNumDisplay = acc.account_number ? `<span class="text-[10px] font-mono text-on-surface-variant">•• ${acc.account_number.slice(-4)}</span>` : '';
 
                 accountsGrid.innerHTML += `
-                    <div class="glass-card rounded-lg p-6 group hover:border-primary transition-all duration-300">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
-                                <span class="material-symbols-outlined text-primary">${icon}</span>
+                    <div class="glass-card rounded-xl p-5 group hover:border-primary transition-all duration-300 relative flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-primary">${icon}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded ${badgeClass}">${acc.account_type}</span>
+                                    <button type="button" title="Delete Account" class="text-outline hover:text-rose-600 transition-colors p-0.5" onclick="deleteAccount(${acc.id})">
+                                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                                    </button>
+                                </div>
                             </div>
-                            <span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors cursor-pointer" onclick="deleteAccount(${acc.id})">delete</span>
+                            <div class="flex justify-between items-baseline">
+                                <p class="text-xs font-bold text-primary truncate max-w-[150px]">${acc.name}</p>
+                                ${accNumDisplay}
+                            </div>
+                            <p class="text-[11px] text-on-surface-variant truncate">${acc.bank_name || ''}</p>
                         </div>
-                        <p class="text-body-sm text-on-surface-variant">${acc.name} (${acc.bank_name})</p>
-                        <p class="font-title-sm text-primary font-bold mt-1">${fmt.format(acc.current_balance)}</p>
+                        <p class="font-data-mono text-lg font-bold text-primary mt-3">${fmt.format(acc.current_balance)}</p>
                     </div>`;
             });
         }
@@ -1087,6 +1105,194 @@ function computeIntelligenceResponse(query) {
 }
 
 // ==========================================
+// ACCOUNTS TAB RENDERER
+// ==========================================
+function renderAccountsTab() {
+    const fmt = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+
+    const liquidTypes = ['SAVINGS', 'SALARY', 'CURRENT', 'WALLET', 'CASH'];
+    const dematTypes = ['DEMAT', 'INVESTMENT'];
+    const liabilityTypes = ['CREDIT_CARD', 'LOAN'];
+
+    const liquidAccounts = state.accounts.filter(a => liquidTypes.includes((a.account_type || '').toUpperCase()));
+    const dematAccounts = state.accounts.filter(a => dematTypes.includes((a.account_type || '').toUpperCase()) || (a.bank_name && ['groww', 'angel one', 'angle one', 'zerodha'].some(b => a.bank_name.toLowerCase().includes(b))));
+    const otherAccounts = state.accounts.filter(a => !liquidAccounts.includes(a) && !dematAccounts.includes(a));
+
+    const totalLiquid = liquidAccounts.reduce((sum, a) => sum + (parseFloat(a.current_balance) || 0), 0);
+    const totalDemat = dematAccounts.reduce((sum, a) => sum + (parseFloat(a.current_balance) || 0), 0);
+    const totalLiabilities = otherAccounts.filter(a => liabilityTypes.includes((a.account_type || '').toUpperCase()))
+        .reduce((sum, a) => sum + Math.abs(parseFloat(a.current_balance) || 0), 0);
+
+    const elLiquid = document.getElementById('acc-metric-liquid');
+    if (elLiquid) elLiquid.textContent = fmt.format(totalLiquid);
+
+    const elDemat = document.getElementById('acc-metric-demat');
+    if (elDemat) elDemat.textContent = fmt.format(totalDemat);
+
+    const elCount = document.getElementById('acc-metric-count');
+    if (elCount) elCount.textContent = state.accounts.length;
+
+    const elLiab = document.getElementById('acc-metric-liabilities');
+    if (elLiab) elLiab.textContent = fmt.format(totalLiabilities);
+
+    const bankCountBadge = document.getElementById('bank-accounts-count');
+    if (bankCountBadge) bankCountBadge.textContent = `${liquidAccounts.length} Accounts`;
+
+    const dematCountBadge = document.getElementById('demat-accounts-count');
+    if (dematCountBadge) dematCountBadge.textContent = `${dematAccounts.length} Accounts`;
+
+    const otherCountBadge = document.getElementById('other-accounts-count');
+    if (otherCountBadge) otherCountBadge.textContent = `${otherAccounts.length} Accounts`;
+
+    // Render Bank Accounts Grid
+    const bankGrid = document.getElementById('bank-accounts-grid');
+    if (bankGrid) {
+        bankGrid.innerHTML = '';
+        if (liquidAccounts.length === 0) {
+            bankGrid.innerHTML = `
+                <div class="col-span-full p-8 text-center bg-surface-container-low rounded-xl border border-dashed border-outline-variant">
+                    <p class="text-xs text-on-surface-variant font-medium">No liquid savings or bank accounts added yet.</p>
+                    <button class="mt-3 px-3 py-1.5 bg-primary text-on-primary rounded-lg text-xs font-bold" onclick="openAddAccountModal()">+ Add Bank Account</button>
+                </div>`;
+        } else {
+            liquidAccounts.forEach(acc => {
+                const accNum = acc.account_number ? `<span class="text-[11px] font-mono text-on-surface-variant font-medium">A/C: ${acc.account_number}</span>` : '<span class="text-[11px] text-outline">No A/C Number</span>';
+                bankGrid.innerHTML += `
+                    <div class="glass-card rounded-xl p-5 border border-outline-variant hover:border-primary transition-all duration-300 relative group flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100">
+                                        <span class="material-symbols-outlined text-[20px]">account_balance</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs font-extrabold text-primary leading-tight">${acc.name}</h4>
+                                        <p class="text-[11px] text-on-surface-variant">${acc.bank_name || 'Bank'}</p>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 uppercase tracking-wider">${acc.account_type}</span>
+                            </div>
+                            <div class="my-3 pb-3 border-b border-outline-variant flex justify-between items-baseline">
+                                <div>
+                                    <span class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">Current Balance</span>
+                                    <p class="text-xl font-bold font-data-mono text-primary mt-0.5">${fmt.format(acc.current_balance)}</p>
+                                </div>
+                                ${accNum}
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pt-1">
+                            <button class="text-xs font-bold text-primary hover:underline flex items-center gap-1" onclick="filterTransactionsByAccount(${acc.id})">
+                                <span class="material-symbols-outlined text-sm">receipt_long</span> View Ledger
+                            </button>
+                            <button class="text-xs font-bold text-rose-600 hover:text-rose-800 flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity" onclick="deleteAccount(${acc.id})">
+                                <span class="material-symbols-outlined text-sm">delete</span> Delete
+                            </button>
+                        </div>
+                    </div>`;
+            });
+        }
+    }
+
+    // Render Demat Accounts Grid
+    const dematGrid = document.getElementById('demat-accounts-grid');
+    if (dematGrid) {
+        dematGrid.innerHTML = '';
+        if (dematAccounts.length === 0) {
+            dematGrid.innerHTML = `
+                <div class="col-span-full p-8 text-center bg-surface-container-low rounded-xl border border-dashed border-outline-variant">
+                    <p class="text-xs text-on-surface-variant font-medium">No Demat or stock broker accounts linked yet.</p>
+                    <button class="mt-3 px-3 py-1.5 bg-primary text-on-primary rounded-lg text-xs font-bold" onclick="openAddAccountModal()">+ Add Demat Account (Groww/Angel One)</button>
+                </div>`;
+        } else {
+            dematAccounts.forEach(acc => {
+                const clientId = acc.account_number ? `<span class="text-[11px] font-mono text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded font-bold">Client ID: ${acc.account_number}</span>` : '';
+                dematGrid.innerHTML += `
+                    <div class="glass-card rounded-xl p-5 border border-outline-variant hover:border-indigo-400 transition-all duration-300 relative group flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center border border-indigo-100">
+                                        <span class="material-symbols-outlined text-[20px]">trending_up</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs font-extrabold text-primary leading-tight">${acc.name}</h4>
+                                        <p class="text-[11px] text-on-surface-variant">${acc.bank_name || 'Broker Platform'}</p>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 uppercase tracking-wider">DEMAT</span>
+                            </div>
+                            <div class="my-3 pb-3 border-b border-outline-variant flex justify-between items-baseline">
+                                <div>
+                                    <span class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">Portfolio / Balance</span>
+                                    <p class="text-xl font-bold font-data-mono text-indigo-900 mt-0.5">${fmt.format(acc.current_balance)}</p>
+                                </div>
+                                ${clientId}
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pt-1">
+                            <div class="flex gap-2">
+                                <button class="text-xs font-bold text-primary hover:underline flex items-center gap-1" onclick="switchTab('investments')">
+                                    <span class="material-symbols-outlined text-sm">pie_chart</span> Portfolio
+                                </button>
+                                <button class="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1" onclick="openImportDematModal()">
+                                    <span class="material-symbols-outlined text-sm">upload_file</span> Import
+                                </button>
+                            </div>
+                            <button class="text-xs font-bold text-rose-600 hover:text-rose-800 flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity" onclick="deleteAccount(${acc.id})">
+                                <span class="material-symbols-outlined text-sm">delete</span> Delete
+                            </button>
+                        </div>
+                    </div>`;
+            });
+        }
+    }
+
+    // Render Other / Credit Cards Grid
+    const otherGrid = document.getElementById('other-accounts-grid');
+    if (otherGrid) {
+        otherGrid.innerHTML = '';
+        if (otherAccounts.length === 0) {
+            otherGrid.innerHTML = `
+                <div class="col-span-full p-6 text-center bg-surface-container-low rounded-xl border border-outline-variant">
+                    <p class="text-xs text-on-surface-variant">No credit cards or debt facilities active. Zero liabilities.</p>
+                </div>`;
+        } else {
+            otherAccounts.forEach(acc => {
+                otherGrid.innerHTML += `
+                    <div class="glass-card rounded-xl p-5 border border-outline-variant hover:border-primary transition-all duration-300 relative group flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-10 h-10 rounded-full bg-rose-50 text-rose-700 flex items-center justify-center border border-rose-100">
+                                        <span class="material-symbols-outlined text-[20px]">credit_card</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs font-extrabold text-primary leading-tight">${acc.name}</h4>
+                                        <p class="text-[11px] text-on-surface-variant">${acc.bank_name || 'Issuer'}</p>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 uppercase tracking-wider">${acc.account_type}</span>
+                            </div>
+                            <div class="my-3 pb-3 border-b border-outline-variant">
+                                <span class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">Balance / Owed</span>
+                                <p class="text-xl font-bold font-data-mono text-rose-700 mt-0.5">${fmt.format(acc.current_balance)}</p>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pt-1">
+                            <button class="text-xs font-bold text-primary hover:underline flex items-center gap-1" onclick="filterTransactionsByAccount(${acc.id})">
+                                <span class="material-symbols-outlined text-sm">receipt_long</span> Ledger
+                            </button>
+                            <button class="text-xs font-bold text-rose-600 hover:text-rose-800 flex items-center gap-1" onclick="deleteAccount(${acc.id})">
+                                <span class="material-symbols-outlined text-sm">delete</span> Delete
+                            </button>
+                        </div>
+                    </div>`;
+            });
+        }
+    }
+}
+
+// ==========================================
 // FORM SUBMIT HANDLERS & OPERATIONS
 // ==========================================
 
@@ -1106,9 +1312,12 @@ async function handleAddAccount(e) {
             body: JSON.stringify({ name, bank_name, account_type, account_number, opening_balance, currency })
         });
         
-        if (!res.ok) throw new Error("Account creation failed");
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || "Account creation failed");
+        }
         
-        showToast("Account successfully registered!", "success");
+        showToast(`Account "${name}" successfully registered!`, "success");
         closeModal('add-account-modal');
         document.getElementById('add-account-form').reset();
         
@@ -1116,6 +1325,9 @@ async function handleAddAccount(e) {
         showLoading(true);
         await Promise.all([fetchAccounts(), fetchNetWorth(), fetchHealthScore(), fetchForecast(), fetchInvestmentsAnalysis()]);
         renderAll();
+        
+        // Take user directly to accounts tab so they see their new account immediately!
+        switchTab('accounts');
     } catch (err) {
         showToast("Error creating account: " + err.message, "error");
     } finally {
@@ -2462,4 +2674,80 @@ function renderInvestmentsTab() {
         }
     }
 }
+
+// ==========================================
+// ACCOUNT MANAGEMENT & GLOBAL HELPERS
+// ==========================================
+
+async function deleteAccount(id) {
+    const acc = state.accounts.find(a => a.id === id);
+    const accName = acc ? acc.name : "this account";
+    if (!confirm(`Are you sure you want to delete ${accName}? Any associated transactions will also be permanently deleted.`)) {
+        return;
+    }
+    showLoading(true);
+    try {
+        const res = await fetch(`${API_BASE}/accounts/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error("Failed to delete account");
+        showToast("Account deleted successfully.", "success");
+        await Promise.all([fetchAccounts(), fetchNetWorth(), fetchHealthScore(), fetchTransactions(), fetchInvestmentsAnalysis()]);
+        renderAll();
+    } catch (err) {
+        showToast("Error deleting account: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function cleanDuplicates() {
+    if (!confirm("Are you sure you want to clean duplicate unused accounts? Accounts with zero balance and no transactions will be purged.")) {
+        return;
+    }
+    showLoading(true);
+    try {
+        const res = await fetch(`${API_BASE}/accounts/clean-duplicates`, { method: 'POST' });
+        if (!res.ok) throw new Error("Failed to clean duplicates");
+        const data = await res.json();
+        showToast(data.message || `Cleaned ${data.deleted_count} duplicate accounts.`, "success");
+        await Promise.all([fetchAccounts(), fetchNetWorth(), fetchHealthScore()]);
+        renderAll();
+    } catch (err) {
+        showToast("Error cleaning duplicates: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+function filterTransactionsByAccount(accountId) {
+    state.filters.accountId = accountId;
+    const filterSelect = document.getElementById('ledger-filter-account');
+    if (filterSelect) filterSelect.value = accountId;
+    switchTab('transactions');
+    fetchTransactions().then(() => renderTransactionsTab());
+}
+
+function openSettingsModal() {
+    openModal('settings-modal');
+}
+
+function openSupportModal() {
+    openModal('support-modal');
+}
+
+function switchFinancialYear(fy) {
+    state.activeFY = fy;
+    fetchFYReport().then(() => {
+        renderFinancialYearTab();
+        showToast(`Switched active financial year to ${fy}`, "info");
+    });
+}
+
+// Global window bindings for inline HTML handlers
+window.switchTab = switchTab;
+window.deleteAccount = deleteAccount;
+window.cleanDuplicates = cleanDuplicates;
+window.filterTransactionsByAccount = filterTransactionsByAccount;
+window.openSettingsModal = openSettingsModal;
+window.openSupportModal = openSupportModal;
+window.switchFinancialYear = switchFinancialYear;
 

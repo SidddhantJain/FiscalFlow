@@ -64,3 +64,21 @@ def delete_account(account_id: int, db: Session = Depends(get_db), user_id: int 
     db.delete(db_account)
     db.commit()
     return None
+
+@router.post("/clean-duplicates")
+def clean_duplicate_accounts(db: Session = Depends(get_db), user_id: int = Depends(get_default_user_id)):
+    """Removes duplicate accounts with identical name and bank that have 0 balance or no transactions."""
+    accounts = db.query(Account).filter(Account.user_id == user_id).order_by(Account.id.asc()).all()
+    seen = {}
+    deleted_count = 0
+    for acc in accounts:
+        key = (acc.name.strip().lower(), acc.bank_name.strip().lower() if acc.bank_name else "")
+        if key in seen:
+            has_tx = len(acc.transactions) > 0 if hasattr(acc, 'transactions') else False
+            if not has_tx or acc.current_balance == 0:
+                db.delete(acc)
+                deleted_count += 1
+                continue
+        seen[key] = acc
+    db.commit()
+    return {"message": f"Cleaned {deleted_count} duplicate accounts.", "deleted_count": deleted_count}

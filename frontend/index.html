@@ -109,6 +109,10 @@
                 <span class="material-symbols-outlined">dashboard</span>
                 <span class="font-medium text-sm">Dashboard</span>
             </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#" data-tab-target="accounts">
+                <span class="material-symbols-outlined">account_balance</span>
+                <span class="font-medium text-sm">Bank & Demat Accounts</span>
+            </a>
             <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#" data-tab-target="transactions">
                 <span class="material-symbols-outlined">receipt_long</span>
                 <span class="font-medium text-sm">Transactions</span>
@@ -135,14 +139,14 @@
                 <span class="material-symbols-outlined text-sm">add_card</span> Add Bank / Demat Account
             </button>
             <div class="space-y-1 text-xs">
-                <a class="flex items-center gap-3 py-2 text-on-surface-variant hover:text-primary transition-colors" href="#">
+                <button type="button" class="w-full flex items-center gap-3 py-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer text-left rounded px-1" onclick="openSettingsModal()">
                     <span class="material-symbols-outlined text-[18px]">settings</span>
                     <span>Settings</span>
-                </a>
-                <a class="flex items-center gap-3 py-2 text-on-surface-variant hover:text-primary transition-colors" href="#">
+                </button>
+                <button type="button" class="w-full flex items-center gap-3 py-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer text-left rounded px-1" onclick="openSupportModal()">
                     <span class="material-symbols-outlined text-[18px]">help</span>
                     <span>Support</span>
-                </a>
+                </button>
             </div>
         </div>
     </aside>
@@ -436,6 +440,110 @@
                         </h4>
                         <p class="text-3xl font-extrabold text-primary font-data-mono">Active</p>
                         <p class="text-xs text-on-surface-variant mt-2">Deductible mutual funds & retirement schemes indexed.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- TAB: ACCOUNTS (Bank & Demat Accounts Hub)  -->
+            <!-- ========================================== -->
+            <div data-tab-content="accounts" class="space-y-8 hidden">
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-extrabold text-primary mb-1">Bank & Demat Accounts</h2>
+                        <p class="text-xs text-on-surface-variant font-medium">Manage liquid bank accounts, Demat brokers (Groww, Angel One, Zerodha), and credit facilities.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button class="flex items-center gap-1.5 px-3.5 py-2 border border-outline-variant bg-white rounded-lg text-xs font-bold text-amber-700 hover:bg-surface-container-low transition-colors shadow-sm" onclick="cleanDuplicates()">
+                            <span class="material-symbols-outlined text-sm">cleaning_services</span> Clean Duplicate Accounts
+                        </button>
+                        <button class="flex items-center gap-1.5 px-3.5 py-2 border border-outline-variant bg-white rounded-lg text-xs font-bold text-primary hover:bg-surface-container-low transition-colors shadow-sm" onclick="openImportDematModal()">
+                            <span class="material-symbols-outlined text-sm text-indigo-600">upload_file</span> Import Demat Statement
+                        </button>
+                        <button class="flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 transition-all shadow-sm" onclick="openAddAccountModal()">
+                            <span class="material-symbols-outlined text-sm">add_card</span> Add Account
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Accounts Summary Metric Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="glass-card rounded-xl p-5 border border-outline-variant">
+                        <div class="flex items-center justify-between text-on-surface-variant mb-2">
+                            <span class="text-xs font-bold uppercase tracking-wider">Liquid Savings</span>
+                            <span class="material-symbols-outlined text-emerald-600">account_balance</span>
+                        </div>
+                        <h3 id="acc-metric-liquid" class="text-2xl font-extrabold text-primary font-data-mono">₹0</h3>
+                        <p class="text-[11px] text-on-surface-variant mt-1">Available in bank & cash accounts</p>
+                    </div>
+
+                    <div class="glass-card rounded-xl p-5 border border-outline-variant">
+                        <div class="flex items-center justify-between text-on-surface-variant mb-2">
+                            <span class="text-xs font-bold uppercase tracking-wider">Demat & Holdings</span>
+                            <span class="material-symbols-outlined text-indigo-600">trending_up</span>
+                        </div>
+                        <h3 id="acc-metric-demat" class="text-2xl font-extrabold text-indigo-900 font-data-mono">₹0</h3>
+                        <p class="text-[11px] text-on-surface-variant mt-1">Invested in Groww / Angel One / Stocks</p>
+                    </div>
+
+                    <div class="glass-card rounded-xl p-5 border border-outline-variant">
+                        <div class="flex items-center justify-between text-on-surface-variant mb-2">
+                            <span class="text-xs font-bold uppercase tracking-wider">Total Accounts</span>
+                            <span class="material-symbols-outlined text-secondary">wallet</span>
+                        </div>
+                        <h3 id="acc-metric-count" class="text-2xl font-extrabold text-primary font-data-mono">0</h3>
+                        <p class="text-[11px] text-on-surface-variant mt-1">Active registered financial institutions</p>
+                    </div>
+
+                    <div class="glass-card rounded-xl p-5 border border-outline-variant">
+                        <div class="flex items-center justify-between text-on-surface-variant mb-2">
+                            <span class="text-xs font-bold uppercase tracking-wider">Total Liabilities</span>
+                            <span class="material-symbols-outlined text-rose-500">credit_card</span>
+                        </div>
+                        <h3 id="acc-metric-liabilities" class="text-2xl font-extrabold text-rose-600 font-data-mono">₹0</h3>
+                        <p class="text-[11px] text-on-surface-variant mt-1">Credit cards & outstanding dues</p>
+                    </div>
+                </div>
+
+                <!-- Liquid Bank Accounts Section -->
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-base font-bold text-primary flex items-center gap-2">
+                            <span class="material-symbols-outlined text-emerald-600">account_balance</span>
+                            Liquid Bank & Savings Accounts
+                        </h3>
+                        <span id="bank-accounts-count" class="text-xs text-on-surface-variant font-medium">0 Accounts</span>
+                    </div>
+                    <div id="bank-accounts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Dynamic Bank Accounts -->
+                    </div>
+                </div>
+
+                <!-- Demat & Stock Broker Accounts Section -->
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-base font-bold text-primary flex items-center gap-2">
+                            <span class="material-symbols-outlined text-indigo-600">monitoring</span>
+                            Demat & Stock Broker Accounts
+                        </h3>
+                        <span id="demat-accounts-count" class="text-xs text-on-surface-variant font-medium">0 Accounts</span>
+                    </div>
+                    <div id="demat-accounts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Dynamic Demat Accounts -->
+                    </div>
+                </div>
+
+                <!-- Credit Cards & Other Accounts Section -->
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-base font-bold text-primary flex items-center gap-2">
+                            <span class="material-symbols-outlined text-rose-500">credit_card</span>
+                            Credit Cards & Credit Facilities
+                        </h3>
+                        <span id="other-accounts-count" class="text-xs text-on-surface-variant font-medium">0 Accounts</span>
+                    </div>
+                    <div id="other-accounts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Dynamic Credit Card Accounts -->
                     </div>
                 </div>
             </div>
@@ -1746,6 +1854,201 @@
 
             <div class="flex justify-end gap-2 pt-6 border-t border-outline-variant mt-6">
                 <button type="button" class="px-4 py-2 border border-outline-variant rounded-lg text-primary hover:bg-surface-container-low text-xs font-bold" onclick="closeModal('statements-manager-modal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-primary/40 backdrop-blur-sm px-4">
+        <div class="bg-white rounded-xl border border-outline-variant p-6 w-full max-w-lg shadow-2xl relative fade-in max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center pb-4 border-b border-outline-variant">
+                <h3 class="text-base font-bold text-primary flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">settings</span> Application Settings & Data Control
+                </h3>
+                <button type="button" class="text-on-surface-variant hover:text-primary" onclick="closeModal('settings-modal')">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            </div>
+            
+            <div class="py-4 space-y-6 text-xs">
+                <!-- System & API Info -->
+                <div class="bg-surface-container rounded-xl p-4 border border-outline-variant space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-primary flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> Backend Engine
+                        </span>
+                        <span class="font-mono text-[11px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded font-bold">FastAPI / Online</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-on-surface-variant text-[11px] pt-1">
+                        <div>Database: <span class="font-mono font-bold text-primary">SQLite (fiscalflow.db)</span></div>
+                        <div>API Endpoint: <span class="font-mono font-bold text-primary">http://127.0.0.1:8000</span></div>
+                        <div>Version: <span class="font-mono font-bold text-primary">FiscalFlow v2.4.0</span></div>
+                        <div>Default Currency: <span class="font-bold text-primary">INR (₹)</span></div>
+                    </div>
+                </div>
+
+                <!-- Data Maintenance & Quick Actions -->
+                <div class="space-y-3">
+                    <h4 class="font-bold text-primary text-xs uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm text-indigo-600">build</span> Database Maintenance
+                    </h4>
+                    
+                    <div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-primary">Purge Duplicate Accounts</p>
+                            <p class="text-on-surface-variant text-[11px]">Deletes redundant zero-balance test accounts without deleting active transactions.</p>
+                        </div>
+                        <button type="button" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs shadow-sm transition-all flex items-center gap-1" onclick="cleanDuplicates()">
+                            <span class="material-symbols-outlined text-xs">cleaning_services</span> Clean Now
+                        </button>
+                    </div>
+
+                    <div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-primary">Re-evaluate AI Heuristics</p>
+                            <p class="text-on-surface-variant text-[11px]">Re-analyzes all budgets, spending anomalies, and emergency fund recommendations.</p>
+                        </div>
+                        <button type="button" class="px-3 py-1.5 bg-primary hover:opacity-90 text-on-primary rounded-lg font-bold text-xs shadow-sm transition-all flex items-center gap-1" onclick="refreshInsightsList(); showToast('AI insights refreshed successfully!', 'success');">
+                            <span class="material-symbols-outlined text-xs">autorenew</span> Refresh
+                        </button>
+                    </div>
+
+                    <div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-primary">Reset Master Budget Plan</p>
+                            <p class="text-on-surface-variant text-[11px]">Restores the baseline ₹31,000 budget allocations (PG rent, commute, SIPs, emergency).</p>
+                        </div>
+                        <button type="button" class="px-3 py-1.5 border border-outline-variant hover:bg-white text-primary rounded-lg font-bold text-xs shadow-sm transition-all" onclick="resetMasterBudget()">
+                            Reset Plan
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preferences -->
+                <div class="space-y-3">
+                    <h4 class="font-bold text-primary text-xs uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm text-teal-600">tune</span> Preferences
+                    </h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-on-surface-variant mb-1 font-semibold">Active Fiscal Year</label>
+                            <select id="settings-fy" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2 text-xs" onchange="switchFinancialYear(this.value)">
+                                <option value="FY 2024-25" selected>FY 2024-25 (Current)</option>
+                                <option value="FY 2023-24">FY 2023-24</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-on-surface-variant mb-1 font-semibold">Base Display Currency</label>
+                            <select id="settings-curr" class="w-full border-outline-variant focus:border-primary focus:ring-0 rounded-lg p-2 text-xs">
+                                <option value="INR" selected>Indian Rupee (₹ INR)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-4 border-t border-outline-variant">
+                <button type="button" class="px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:opacity-90 transition-all" onclick="closeModal('settings-modal')">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Support Modal -->
+    <div id="support-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-primary/40 backdrop-blur-sm px-4">
+        <div class="bg-white rounded-xl border border-outline-variant p-6 w-full max-w-2xl shadow-2xl relative fade-in max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center pb-4 border-b border-outline-variant">
+                <h3 class="text-base font-bold text-primary flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">help</span> FiscalFlow Engine Help & Reference
+                </h3>
+                <button type="button" class="text-on-surface-variant hover:text-primary" onclick="closeModal('support-modal')">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            </div>
+            
+            <div class="py-4 space-y-5 text-xs">
+                <!-- Section 1: Axis Bank Statement Import -->
+                <div class="p-4 bg-surface-container rounded-xl border border-outline-variant">
+                    <h4 class="font-bold text-primary mb-2 flex items-center gap-1.5 text-xs">
+                        <span class="material-symbols-outlined text-teal-600 text-sm">account_balance</span> Axis Bank Statement Format Specification
+                    </h4>
+                    <p class="text-on-surface-variant leading-relaxed mb-3">
+                        FiscalFlow includes a dedicated parser for standard Axis Bank CSV/Excel statements matching the official banking column layout:
+                    </p>
+                    <div class="bg-surface-container-lowest p-2.5 rounded-lg font-mono text-[11px] text-primary border border-outline-variant overflow-x-auto">
+                        SRL NO | Tran Date | CHQNO | PARTICULARS | DR | CR | BAL | SOL
+                    </div>
+                    <ul class="list-disc list-inside text-on-surface-variant mt-2.5 space-y-1 text-[11px]">
+                        <li><strong>Tran Date</strong>: Formatted as <code>DD-MM-YYYY</code> (e.g. <code>01-10-2024</code>).</li>
+                        <li><strong>DR / CR</strong>: Debit (Expense) and Credit (Income/Inflow) columns.</li>
+                        <li><strong>Download Compatibility</strong>: You can download your transactions formatted identically to Axis Bank statements via the <em>Download Axis Statement</em> button.</li>
+                    </ul>
+                </div>
+
+                <!-- Section 2: Demat & Investment Statements -->
+                <div class="p-4 bg-surface-container rounded-xl border border-outline-variant">
+                    <h4 class="font-bold text-primary mb-2 flex items-center gap-1.5 text-xs">
+                        <span class="material-symbols-outlined text-indigo-600 text-sm">show_chart</span> Demat & Broker Statements (Groww, Angel One, Zerodha)
+                    </h4>
+                    <p class="text-on-surface-variant leading-relaxed mb-2">
+                        Upload CSV holding statements exported from Groww, Angel One, or Zerodha to auto-populate your investment portfolio and sync live valuations.
+                    </p>
+                    <div class="grid grid-cols-3 gap-2 text-center text-[11px] pt-1">
+                        <div class="bg-white p-2 rounded border border-outline-variant font-bold text-emerald-800">Groww Demat</div>
+                        <div class="bg-white p-2 rounded border border-outline-variant font-bold text-rose-800">Angel One Demat</div>
+                        <div class="bg-white p-2 rounded border border-outline-variant font-bold text-blue-800">Zerodha Kite</div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Master Budget Allocation -->
+                <div class="p-4 bg-surface-container rounded-xl border border-outline-variant">
+                    <h4 class="font-bold text-primary mb-2 flex items-center gap-1.5 text-xs">
+                        <span class="material-symbols-outlined text-secondary text-sm">pie_chart</span> Master Budget (₹31,000 Monthly Cash Flow)
+                    </h4>
+                    <p class="text-on-surface-variant leading-relaxed mb-2">
+                        Engineered around ₹25,000 Internship Stipend (Sigma Soft Tech Park) + ₹6,000 Family Support:
+                    </p>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+                        <div class="bg-white p-2 rounded border border-outline-variant">
+                            <span class="text-on-surface-variant block">PG Rent & Meals</span>
+                            <span class="font-bold font-data-mono text-primary">₹14,000 (45.2%)</span>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-outline-variant">
+                            <span class="text-on-surface-variant block">Office Lunch</span>
+                            <span class="font-bold font-data-mono text-primary">₹3,250 (10.5%)</span>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-outline-variant">
+                            <span class="text-on-surface-variant block">BMTC Bus Commute</span>
+                            <span class="font-bold font-data-mono text-primary">₹1,000 (3.2%)</span>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-outline-variant">
+                            <span class="text-on-surface-variant block">Lifestyle & Personal</span>
+                            <span class="font-bold font-data-mono text-primary">₹3,500 (11.3%)</span>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-outline-variant">
+                            <span class="text-on-surface-variant block">Emergency Reserve</span>
+                            <span class="font-bold font-data-mono text-emerald-700">₹2,750 (8.9%)</span>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-outline-variant">
+                            <span class="text-on-surface-variant block">Monthly SIP</span>
+                            <span class="font-bold font-data-mono text-indigo-700">₹5,500 (17.7%)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Repetitive Tag Memory -->
+                <div class="p-4 bg-surface-container rounded-xl border border-outline-variant">
+                    <h4 class="font-bold text-primary mb-1 flex items-center gap-1.5 text-xs">
+                        <span class="material-symbols-outlined text-amber-600 text-sm">auto_awesome</span> Smart Heuristics & Repetitive Task Reducer
+                    </h4>
+                    <p class="text-on-surface-variant leading-relaxed text-[11px]">
+                        Transactions with UPI IDs default to <em>Expense</em>. Transfers to Groww / Angel One automatically tag as <em>Investment</em>.
+                        When you manually tag or categorize any merchant, the memory engine saves that rule and automatically tags future matching transactions.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-4 border-t border-outline-variant">
+                <button type="button" class="px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:opacity-90 transition-all" onclick="closeModal('support-modal')">Close Guide</button>
             </div>
         </div>
     </div>
