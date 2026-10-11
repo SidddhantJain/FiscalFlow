@@ -36,9 +36,13 @@ const state = {
 };
 
 // Initializer
-document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initApp();
+    });
+} else {
     initApp();
-});
+}
 
 async function initApp() {
     setupEventListeners();
@@ -1507,29 +1511,6 @@ async function handleAddGoal(e) {
 }
 
 // DELETE HANDLERS
-async function deleteAccount(id) {
-    if (!confirm("Are you sure you want to delete this account? All related transactions will be affected.")) return;
-    try {
-        showLoading(true);
-        const res = await fetch(`${API_BASE}/accounts/${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error("Account deletion failed");
-        showToast("Account removed", "success");
-        
-        await Promise.all([
-            fetchAccounts(),
-            fetchTransactions(),
-            fetchNetWorth(),
-            fetchHealthScore(),
-            fetchForecast(),
-            fetchFYReport()
-        ]);
-        renderAll();
-    } catch (err) {
-        showToast("Error deleting: " + err.message, "error");
-    } finally {
-        showLoading(false);
-    }
-}
 
 async function deleteTransaction(id) {
     if (!confirm("Remove this ledger transaction? Parent account balance will be adjusted.")) return;
@@ -1592,6 +1573,43 @@ async function deleteGoal(id) {
 // ==========================================
 // UTILITY SHIMS
 // ==========================================
+
+function showLoading(show = true) {
+    const el = document.getElementById('loading-indicator');
+    if (!el) return;
+    if (show) {
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
+}
+
+function showToast(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    const bgClass = type === 'success' ? 'bg-emerald-700 text-white' : (type === 'error' ? 'bg-rose-700 text-white' : 'bg-primary text-white');
+    const icon = type === 'success' ? 'check_circle' : (type === 'error' ? 'error' : 'info');
+
+    toast.className = `${bgClass} px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-xs font-semibold pointer-events-auto fade-in transition-all duration-300`;
+    toast.innerHTML = `<span class="material-symbols-outlined text-sm">${icon}</span> <span>${message}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 3500);
+}
+
+window.showLoading = showLoading;
+window.showToast = showToast;
 
 function debounce(func, wait) {
     let timeout;

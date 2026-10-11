@@ -1,42 +1,90 @@
-# FiscalFlow Project Context & Architecture Reference
+# FiscalFlow Canonical Context & Architecture Reference
 
-> **Important Instruction**: Read this `context.md` file before performing any tasks or answering prompts on the FiscalFlow codebase to ensure strict adherence to established schemas, bank statement formats, master budgets, and categorization rules.
-
----
-
-## 1. Project Overview & Tech Stack
-**FiscalFlow** is a modern, full-stack personal wealth intelligence and budget tracking system tailored for Indian personal finance workflows.
-
-- **Backend**: Python 3.10+ / FastAPI / SQLAlchemy / SQLite database (`backend/fiscalflow.db`).
-- **Frontend**: HTML5, Vanilla JavaScript (ES6+), Modern Tailwind CSS, SVG Infographics & Charts, Material Symbols.
-- **Server Orchestration**: 
-  - Startup script: [`start.py`](file:///d:/Siddhant/projects/FiscalFlow/start.py) (kills zombie port 8000 processes and launches Uvicorn server).
-  - Shutdown script: [`stop.py`](file:///d:/Siddhant/projects/FiscalFlow/stop.py) (safely terminates port 8000 server).
-  - Standalone tracker exporter: [`generate_tracker.py`](file:///d:/Siddhant/projects/FiscalFlow/generate_tracker.py).
+> **CRITICAL INSTRUCTION**: This `context.md` file is the definitive, single source of truth for the FiscalFlow codebase. Read this document before performing any feature additions, bug fixes, database operations, or responding to user queries to ensure absolute consistency across schemas, banking formats, broker integrations, master budgets, and UI state.
 
 ---
 
-## 2. Bank Statement Specifications & Axis Bank Parsing
-Bank statements are imported via `POST /transactions/import`.
+## 1. Project Overview & Architectural Foundation
 
-### Standard Axis Bank Statement Columns:
-```
-SRL NO | Tran Date | CHQNO | PARTICULARS | DR | CR | BAL | SOL
-```
-- **Tran Date**: Formatted as `%d-%m-%Y` (e.g., `01-10-2024` or `15/10/2024`).
-- **PARTICULARS**: Contains merchant details, UPI IDs, beneficiary names, transfer references.
-- **DR / CR**: Debit (Expense/Outflow) and Credit (Income/Inflow) amounts.
-- **BAL**: Running account balance.
-- **SOL**: Branch / Service Outlet ID.
+**FiscalFlow** is an institutional-grade, full-stack personal wealth intelligence, statement ingestion, and budget tracking application engineered specifically for Indian personal finance workflows.
 
-### Special Transaction Type Directives:
-- Transactions made via **UPI** (e.g. `@okaxis`, `@okhdfcbank`, `UPI/`, `GPAY`, `PAYTM`, `CRED`) default to **EXPENSE** / Spending.
-- Transactions to investment platforms like **Groww**, **Angel One**, **Zerodha**, **Kite**, **Coin**, **Kuvera** default to **INVESTMENT** (`Monthly SIP Investment` / `Mutual Funds` / `Stocks`).
-- Transfers to designated savings accounts default to **SAVINGS** (`Emergency Fund Allocation` / `Savings Transfer`).
+- **Backend**: Python 3.10+ / FastAPI / SQLAlchemy ORM / SQLite database (`backend/fiscalflow.db`).
+- **Database Path Isolation**: The SQLite connection string in [`backend/app/database.py`](file:///d:/Siddhant/projects/FiscalFlow/backend/app/database.py) uses a canonical absolute path to `backend/fiscalflow.db`. This guarantees that executing scripts or commands from the workspace root or the `backend/` folder always connects to the identical database file without creating split or stray databases.
+- **Frontend**: HTML5, Vanilla JavaScript (ES6+ modular state architecture), Tailwind CSS design tokens, Glassmorphism aesthetics, dynamic SVG sparklines and circular gauge meters, Google Material Symbols.
+- **Server Orchestration**:
+  - **Launch Server**: `python start.py` (Kills any orphan process on port 8000, opens `http://127.0.0.1:8000` in the browser, and starts the FastAPI/Uvicorn server with hot reload).
+  - **Stop Server**: `python stop.py` (Safely terminates all background processes listening on port 8000).
+  - **Test Suite**: `backend\.venv\Scripts\python.exe -m pytest backend/app/tests/ -v` (18 comprehensive automated tests).
 
 ---
 
-## 3. Final Master Budget (Income Sources & Allocations)
+## 2. Bank & Demat Account Architecture
+
+Accounts represent liquid repositories, broker holdings, and credit liabilities.
+
+### Supported Account Types (`account_type`):
+- `SAVINGS`: Liquid savings bank accounts (e.g. HDFC Bank, Axis Bank, SBI).
+- `SALARY`: Designated payroll accounts.
+- `DEMAT`: Stock broker and mutual fund accounts (e.g. Groww, Angel One, Zerodha Kite).
+- `INVESTMENT`: Direct AMC mutual fund or wealth accounts.
+- `CURRENT`: Commercial / current bank accounts.
+- `CREDIT_CARD`: Revolving credit facilities.
+- `WALLET` / `CASH`: Digital wallets (Paytm, PhonePe) or physical currency.
+
+### Account Fields & Model Schema:
+- `id`: Primary Key (Integer).
+- `user_id`: Foreign Key (`users.id`, ondelete="CASCADE").
+- `name`: Display label (e.g. `Axis Salary`, `Groww Demat`, `Angel One Portfolio`).
+- `bank_name`: Institution name (e.g. `Axis Bank`, `Groww`, `Angel One`, `HDFC Bank`).
+- `account_type`: Enum string representing account class.
+- `account_number`: Bank account number or Demat Client ID / DP ID (e.g. `1208160012345678`).
+- `opening_balance`: Initial seed capital (Numeric 12, 2).
+- `current_balance`: Live running balance adjusted automatically with transactions (Numeric 12, 2).
+- `currency`: ISO currency code (default: `INR`).
+
+### Account Endpoints (`backend/app/routers/accounts.py`):
+- `GET /accounts/`: Retrieves all registered accounts.
+- `POST /accounts/`: Creates an account with `name`, `bank_name`, `account_type`, `account_number`, `opening_balance`, `currency`. Returns HTTP 201 Created.
+- `GET /accounts/{id}`: Retrieves details for a single account.
+- `PUT /accounts/{id}`: Updates account metadata or balances.
+- `DELETE /accounts/{id}`: Deletes an account and cascades to associated transactions.
+- `POST /accounts/clean-duplicates`: Intelligently purges redundant test accounts that share identical names and have zero balance or no recorded transactions.
+
+---
+
+## 3. Statement Ingestion & Raw Attachment Storage
+
+FiscalFlow stores both the parsed transaction ledger and the exact original uploaded statement files on the local filesystem.
+
+### Persistent File Storage:
+- Stored directory: `backend/uploads/statements/`
+- Every uploaded statement is cataloged in the `statement_files` database table with its original filename, server-saved filename, bank/parser type, file size, and upload timestamp.
+- Download endpoint: `GET /statements/{file_id}/download` allows downloading the exact original raw uploaded statement at any time.
+
+### Supported Statement Parsers (`backend/app/services/statement_import.py`):
+1. **Axis Bank CSV Parser (`AXIS_CSV`)**:
+   - Matches official Axis Bank column specification:
+     ```
+     SRL NO | Tran Date | CHQNO | PARTICULARS | DR | CR | BAL | SOL
+     ```
+   - Dates parsed in `DD-MM-YYYY` format (e.g., `01-10-2024`).
+   - Debit amounts (`DR`) become `EXPENSE` (or `INVESTMENT`/`SAVINGS` if heuristics match).
+   - Credit amounts (`CR`) become `INCOME`.
+2. **HDFC Bank Statement Parser (`HDFC_CSV`)**: Handles standard HDFC transaction narrations and decimal balances.
+3. **SBI Bank Statement Parser (`SBI_CSV`)**: Parses State Bank of India transaction histories.
+4. **Groww Demat Statement Parser (`GROWW_DEMAT`)**: Ingests Groww holding and trade reports (CSV/Excel), auto-creating stock and mutual fund entries with quantity, purchase price, and current market value.
+5. **Angel One Demat Parser (`ANGELONE_DEMAT`)**: Ingests Angel One holding summaries, symbol mappings, and portfolio valuations.
+6. **Zerodha Kite Parser (`ZERODHA_DEMAT`)**: Ingests Zerodha tradebooks and Console holding CSVs.
+7. **Generic Demat Parser (`GENERIC_DEMAT`)**: Parses open CSV statements containing symbols, units, and values.
+8. **Excel Statement Parser (`DEFAULT_XLS`)**: Reads `.xls` and `.xlsx` multi-column banking sheets via `openpyxl`.
+
+### Export Formats:
+- `GET /statements/export/axis`: Dynamically generates and downloads current ledger transactions formatted identically to Axis Bank statement structure (`SRL NO`, `Tran Date`, `CHQNO`, `PARTICULARS`, `DR`, `CR`, `BAL`, `SOL`).
+- `GET /statements/export/full-csv`: Full ledger export containing tags, categories, accounts, and reference IDs.
+
+---
+
+## 4. Final Master Budget (Income Sources & Allocations)
 
 The user's monthly financial baseline is structured around a **₹31,000 Total Monthly Cash Flow**:
 
@@ -47,7 +95,7 @@ The user's monthly financial baseline is structured around a **₹31,000 Total M
 | **Family Support** | ₹6,000 | 19.4% | Supplementary monthly family contribution. |
 | **Total Monthly Cash Flow** | **₹31,000** | **100.0%** | Combined available monthly funds. |
 
-### Allocations & Spending Caps:
+### Allocations & Spending Targets:
 | Category / Line Item | Monthly Amount (₹) | % of Funds | Notes & Strategy | Type |
 | :--- | :--- | :--- | :--- | :--- |
 | **PG Rent & Covered Meals** | ₹14,000 | 45.2% | Breakfast & dinner daily, Saturday full meals, Sunday breakfast. | `EXPENSE` |
@@ -58,156 +106,93 @@ The user's monthly financial baseline is structured around a **₹31,000 Total M
 | **Monthly SIP Investment** | ₹5,500 | 17.7% | Capped fixed wealth-building auto-investment. | `INVESTMENT` |
 | **Unallocated Flex Buffer** | ₹1,000 | 3.2% | Extra cash left untouched in your bank account. | `EXPENSE` |
 
-### Overgrown Alert Engine:
-- If spending in any category exceeds its planned monthly target (`spent > amount`), the system triggers an **"Overgrown Budget Warning"** badge with exact overspend variance (`+₹X over limit`) and strategy notes.
+### Overgrown Alert Engine (`GET /budgets/summary`):
+- When actual spending in any category exceeds its planned monthly target (`spent > amount`), the system triggers an **"Overgrown Budget Warning"** badge displaying exact overspend variance (`+₹X over limit`).
+- Reset baseline: `POST /budgets/reset-master` restores and seeds this exact budget allocation table.
 
 ---
 
-## 4. Intelligent Auto-Tagging & Categorization Engine
-Transactions are automatically tagged and categorized on import or manual entry using regex heuristics in [`backend/app/services/ai_engine.py`](file:///d:/Siddhant/projects/FiscalFlow/backend/app/services/ai_engine.py):
+## 5. Intelligent Heuristics & Repetitive Task Reducer
 
-| Tag Pattern | Keywords / Regex Match | Default Tags Added | Category Assigned |
-| :--- | :--- | :--- | :--- |
-| **Food & Dining** | `swiggy`, `zomato`, `restaurant`, `dhaba`, `thali`, `mess`, `canteen`, `bhojanalaya`, `pizza`, `burger`, `biryani` | `#Food`, `#Dining` | `Food` or `Daily Office Lunch (Mon–Sat)` |
-| **Cafe / Coffee** | `cafe`, `coffee`, `tea`, `ccd`, `starbucks`, `chai point`, `blue tokai`, `third wave` | `#Food`, `#Cafe` | `Daily Office Lunch (Mon–Sat)` |
-| **Groceries & Kirana** | `kirana`, `provision`, `supermarket`, `mart`, `blinkit`, `zepto`, `instamart`, `dmart`, `bigbasket`, `milk` | `#Groceries`, `#Kirana`, `#Lifestyle` | `Lifestyle & Personal Essentials` |
-| **BMTC / Bus Commute** | `bmtc`, `bus`, `chalo`, `ksrtc`, `varthur`, `kundalahalli` | `#Travel`, `#BMTC`, `#Commute` | `BMTC Bus Commute` |
-| **Metro Transit** | `metro`, `namma metro`, `bmrc`, `smart card` | `#Travel`, `#Metro`, `#Commute` | `Transport` |
-| **PG & Rent** | `pg rent`, `rent`, `hostel`, `colive`, `stanza`, `zolo`, `landlord`, `room rent`, `flat` | `#Housing`, `#PG Rent` | `PG Rent & Covered Meals` |
-| **Medical & Pharmacy** | `medical`, `pharmacy`, `pharma`, `apollo`, `medplus`, `1mg`, `netmeds`, `pharmeasy`, `hospital`, `clinic`, `doctor` | `#Medical`, `#Healthcare` | `Lifestyle & Personal Essentials` |
-| **Lifestyle & Mobile** | `recharge`, `airtel`, `jio`, `vi`, `bsnl`, `laundry`, `salon`, `haircut`, `toiletries`, `amazon`, `flipkart`, `myntra`, `zudio` | `#Lifestyle`, `#Shopping` | `Lifestyle & Personal Essentials` |
-| **SIP & Investments** | `groww`, `angelone`, `angle one`, `zerodha`, `kite`, `coin`, `kuvera`, `sip`, `mutual fund`, `uti`, `quant`, `nippon` | `#Investment`, `#SIP` | `Monthly SIP Investment` |
-| **Savings Sweep** | `emergency fund`, `reserve`, `fd`, `fixed deposit`, `sweep`, `rd` | `#Savings`, `#Emergency Fund` | `Emergency Fund Allocation` |
-| **Income Sources** | `stipend`, `sigma soft`, `sigma tech`, `internship`, `family`, `father`, `mother`, `papa`, `mummy`, `allowance` | `#Income`, `#Stipend` or `#Family Support` | `Internship Stipend` / `Family Support` |
-| **UPI Payments** | `upi`, `gpay`, `phonepe`, `paytm`, `cred`, `qr`, `scan`, `@okaxis`, `@okhdfcbank` | `#UPI` | — |
+FiscalFlow incorporates a multi-tier heuristics engine in [`backend/app/services/ai_engine.py`](file:///d:/Siddhant/projects/FiscalFlow/backend/app/services/ai_engine.py):
 
-- **Manual Tag Management**: Users can add, change, or remove tags directly on any transaction from the Ledger tab or via `PUT /transactions/{tx_id}`.
+### Rule 1: UPI Spending Directive
+- Any transaction identified with UPI patterns (`@okaxis`, `@okhdfcbank`, `UPI/`, `GPAY`, `PAYTM`, `CRED`, `QR`, `SCAN`) automatically defaults to **EXPENSE** / Spending.
+
+### Rule 2: Investment Broker Directive
+- Any transaction mentioning **Groww**, **Angel One**, **Angle One**, **Zerodha**, **Kite**, **Coin**, **Kuvera**, or mutual fund AMCs automatically defaults to **INVESTMENT** (`Monthly SIP Investment` / `Mutual Funds` / `Stocks`).
+
+### Rule 3: Savings Transfer Directive
+- Transfers targeting designated savings accounts or reserve funds default to **SAVINGS** (`Emergency Fund Allocation` / `Savings Transfer`).
+
+### Rule 4: Repetitive Tag Memory (Task Reducer)
+- Whenever a user manually updates the tags or category of a transaction, the pattern is memorized in the `user_tag_rules` table.
+- Future statement uploads or transaction entries matching that pattern automatically inherit the learned tags and category.
+- Management endpoints: `GET /statements/tag-rules` and `POST /statements/tag-rules/apply-all`.
 
 ---
 
-## 5. Core Database Schema (`backend/app/models/`)
+## 6. Demat Investments & Recurring SIP Engine
 
-### 1. `Transaction` (`app.models.transaction`)
-- `id`: Integer (PK)
-- `date`: Date
-- `description`: String
-- `amount`: Numeric(12, 2)
-- `type`: String (`INCOME`, `EXPENSE`, `INVESTMENT`, `SAVINGS`, `TRANSFER`, `TAX`)
-- `category_id`: Integer (FK -> `Category.id`, nullable)
-- `account_id`: Integer (FK -> `Account.id`)
-- `destination_account_id`: Integer (FK -> `Account.id`, nullable)
-- `reference_number`: String (nullable)
-- `is_recurring`: Boolean (default False)
-- `notes`: String (nullable)
-- `tags`: String (nullable, comma-separated e.g. `Food, Cafe, UPI`)
+### Portfolio Holdings (`backend/app/routers/investments.py`):
+- Models individual stocks, mutual fund units, and gold holdings.
+- Fields: `name`, `symbol` (e.g. `TCS`, `INFY`, `PPFAS`), `asset_class`, `broker` (Groww, Angel One, Zerodha), `account_id` (linked Demat Account), `units`, `purchase_price`, `current_value`, `buy_date`.
+- Comprehensive financial analysis endpoint (`GET /investments/analysis`): Returns total invested cost, current portfolio value, net unrealized P&L (₹ and %), CAGR benchmark (~14.8%), broker distribution, and asset allocation breakdown.
 
-### 2. `Budget` (`app.models.budget`)
-- `id`: Integer (PK)
-- `user_id`: Integer (FK -> `User.id`)
-- `category_id`: Integer (FK -> `Category.id`)
-- `name`: String (nullable, e.g. `PG Rent & Covered Meals`)
-- `amount`: Numeric(12, 2)
-- `spent`: Numeric(12, 2) (dynamically re-calculated on read)
-- `start_date`: Date
-- `end_date`: Date
-- `notes`: String (nullable, strategy and limit notes)
-
-### 3. `StatementFile` (`app.models.statement_file`)
-- `id`: Integer (PK)
-- `user_id`: Integer (FK -> `User.id`)
-- `filename`: Original uploaded filename (e.g. `Axis_Statement_Oct2024.csv` or `groww_holdings.csv`)
-- `saved_filename`: Local persistent path in `backend/uploads/statements/`
-- `file_size`: Size in bytes
-- `bank_type`: Parser type (`AXIS_CSV`, `HDFC_CSV`, `SBI_CSV`, `GROWW_DEMAT`, `ANGELONE_DEMAT`, `ZERODHA_DEMAT`, `GENERIC_DEMAT`)
-- `transaction_count`: Number of imported transactions / holdings
-- `upload_date`: Timestamp of upload
-
-### 4. `UserTagRule` (`app.models.tag_rule`)
-- `id`: Integer (PK)
-- `user_id`: Integer (FK -> `User.id`)
-- `pattern`: Merchant substring / normalized pattern (e.g. `swiggy`, `bmtc`, `groww`)
-- `tags`: Comma-separated tags to automatically apply (e.g. `Food, Dining, Lunch`)
-- `category_id`: Associated category ID (optional)
-- `match_count`: How many times this rule has been matched
-
-### 5. `Investment` (`app.models.investment`)
-- `id`: Integer (PK)
-- `user_id`: Integer (FK -> `User.id`)
-- `name`: Security / Fund Name
-- `symbol`: Ticker / Stock symbol (e.g. `TCS`, `INFY`, `PPFAS`)
-- `asset_class`: `STOCK`, `MUTUAL_FUND`, `ELSS`, `INDEX_FUND`, `ETF`, `GOLD`
-- `broker`: Broker platform (`Groww`, `Angel One`, `Zerodha`, `Direct AMC`)
-- `account_id`: Associated Demat account ID
-- `units`: Total quantity / shares / MF units
-- `purchase_price`: Avg purchase cost per unit
-- `current_value`: Total current market valuation
-- `buy_date`: Purchase / SIP date
-- `last_updated`: Timestamp
-
-### 6. `SipSchedule` (`app.models.sip`)
-- `id`: Integer (PK)
-- `user_id`: Integer (FK -> `User.id`)
-- `scheme_name`: Mutual Fund / Stock Scheme
-- `amount`: Monthly SIP Amount (e.g. ₹2,500, ₹3,000 -> ₹5,500 Master Plan)
-- `sip_day_of_month`: Day of execution (e.g. 5th, 10th, 15th)
-- `next_sip_date`: Auto-calculated next execution date
-- `broker`: Broker platform (`Groww`, `Angel One`, `Zerodha`)
-- `status`: `ACTIVE`, `PAUSED`, `COMPLETED`
-- `frequency`: `MONTHLY`
+### Recurring SIP Schedules (`backend/app/routers/sips.py`):
+- Models auto-debit mutual fund investments aligned with the ₹5,500/month master plan.
+- Fields: `scheme_name`, `amount`, `sip_day_of_month`, `next_sip_date`, `broker`, `account_id`, `status`.
+- Automatically calculates next execution date and countdown (`days_remaining`).
+- Single-click payment recording (`POST /sips/{id}/execute`): Immediately logs an investment transaction in the ledger, adjusts account balances, and advances the schedule to the next month.
 
 ---
 
-## 6. Demat Statements & Financial Analysis Tool
-- **Demat Statements**: Ingestion of holdings and trade records from Groww, Angel One, and Zerodha statements. Auto-updates portfolio holdings and records investment transactions in the ledger.
-- **Financial Analysis Engine (`GET /investments/analysis`)**: Computes total invested capital, live portfolio valuation, net unrealized P&L (₹ and %), benchmark CAGR (~14.8%), broker distribution, and asset allocation.
-- **SIP Tracker & Calendar**: Tracks monthly SIP amounts, countdown to next SIP execution date, and verifies allocation against the ₹5,500/month Master Plan target. Single-click SIP execution records corresponding ledger transactions.
+## 7. Frontend User Interface & Tab Structure
+
+The application UI is divided into dedicated functional domains:
+
+1. **Dashboard (`dashboard`)**: Financial command center showing live Net Worth, SVG sparkline history, Health Score circular gauge, account cards, heuristic intelligence feed, cashflow bars, and asset breakdown.
+2. **Bank & Demat Accounts (`accounts`)**: Dedicated management center displaying:
+   - Summary metric cards (Liquid Savings, Demat Holdings, Total Accounts, Liabilities).
+   - Liquid Bank Accounts grid (Savings, Salary, Current, Cash) with full account numbers and quick actions (View Ledger, Delete).
+   - Demat & Broker Accounts grid (Groww, Angel One, Zerodha) with Client IDs, portfolio values, and import shortcuts.
+   - Credit Cards & debt facilities grid.
+   - Clean Duplicate Accounts button (`POST /accounts/clean-duplicates`).
+3. **Transaction Ledger (`transactions`)**: Searchable, filterable ledger with inline tag editing, statement import, Axis format export, full CSV export, and transfer detection.
+4. **Financial Year (`financial-year`)**: Tax analytics, FY 2024-25 vs FY 2023-24 selector, Section 80C/80D summaries, and quarterly audit checklist.
+5. **Master Budget (`master-budget`)**: Visual ₹31,000 cash flow distribution with real-time spending progress bars, overgrown budget alerts, and reset utility.
+6. **Investments & Demat (`investments`)**: Demat portfolio manager, holdings table, SIP calendar countdown cards, P&L analytics, and Demat statement ingestion.
+7. **AI Insights (`insights`)**: Real-time heuristics feed, spending anomaly detection, emergency fund tracking, and NLP conversational assistant.
+
+### Modal Dialogs:
+- `add-account-modal`: Registers bank or Demat accounts. Automatically navigates to the Accounts tab upon creation.
+- `add-tx-modal`: Manual transaction logger.
+- `import-modal`: Universal statement importer supporting Axis Bank, HDFC, SBI, Groww, Angel One, and Zerodha.
+- `import-demat-modal`: Dedicated Demat holding and trade statement importer.
+- `add-holding-modal`: Add stock or mutual fund holding.
+- `add-sip-modal`: Add recurring monthly SIP schedule.
+- `statements-manager-modal`: Catalog of uploaded raw statement files, original file downloads, Axis export, and repetitive tag rules memory.
+- `settings-modal`: Preferences, database maintenance (clean duplicate accounts, re-evaluate AI heuristics, reset master plan), version info.
+- `support-modal`: User guide for Axis Bank statement format, Demat statements, Master Budget allocations, and heuristics.
 
 ---
 
-## 7. Key API Endpoints
+## 8. Development & Verification Guide
 
-- `GET /accounts/`: Lists all bank and Demat accounts.
-- `POST /accounts/`: Registers bank or Demat accounts with `account_number`, `bank_name`, and `account_type`.
-- `GET /transactions/?tag=Food&search=...`: Lists transactions filtered by date, type, account, and tag.
-- `POST /transactions/`: Creates a transaction with automatic tag extraction and learned rule matching.
-- `PUT /transactions/{tx_id}`: Updates transaction fields, tags, category, and updates learned tag memory.
-- `DELETE /transactions/{tx_id}`: Reverts account balance and deletes record.
-- `POST /transactions/import`: Parses and persistently stores bank statement files, extracts transactions, auto-categorizes, and applies learned tags.
-- `GET /statements/`: Lists all uploaded and stored statement files (Bank & Demat).
-- `GET /statements/{file_id}/download`: Downloads the exact original raw statement file uploaded by the user.
-- `GET /statements/export/axis`: Downloads current transactions formatted identically to Axis Bank statements (`SRL NO`, `Tran Date`, `CHQNO`, `PARTICULARS`, `DR`, `CR`, `BAL`, `SOL`).
-- `GET /statements/export/full-csv`: Downloads full transaction ledger with tags, categories, accounts, and reference numbers.
-- `GET /statements/tag-rules`: Lists all learned repetitive tag rules.
-- `POST /statements/tag-rules/apply-all`: Scans all past transactions and re-applies learned tag rules.
-- `GET /investments/analysis`: Financial analysis engine returning portfolio value, cost, P&L, broker & asset split, and SIP metrics.
-- `POST /investments/import-demat`: Ingests Groww / Angel One / Zerodha Demat statement files and updates portfolio.
-- `GET /investments/`: Lists individual investment holdings.
-- `POST /investments/`: Adds a stock/mutual fund holding.
-- `DELETE /investments/{id}`: Deletes an investment holding.
-- `GET /sips/`: Lists recurring SIP schedules with next execution dates and countdown.
-- `POST /sips/`: Creates a recurring SIP schedule.
-- `POST /sips/{id}/execute`: Records a live execution transaction for the scheduled SIP.
-- `DELETE /sips/{id}`: Deletes an SIP schedule.
-- `GET /budgets/`: Lists all user budgets with live-computed spending.
-- `GET /budgets/summary`: Returns master planned income, actual spent, flex buffer, distribution percentages, and overgrown alerts.
-- `POST /budgets/reset-master`: Resets and seeds the exact Master Budget (₹31,000 cash flow).
+### Quick Start:
+```bash
+# Start backend server and launch UI
+python start.py
 
----
+# Terminate server
+python stop.py
 
-## 8. How to Run & Verify
+# Run complete test suite
+backend\.venv\Scripts\python.exe -m pytest backend/app/tests/ -v
+```
 
-1. **Start Server**:
-   ```bash
-   python start.py
-   ```
-   Opens `http://127.0.0.1:8000` with live dashboard, transactions ledger, master budget tracker, investments & Demat hub, statements manager, and AI insights.
-
-2. **Stop Server**:
-   ```bash
-   python stop.py
-   ```
-
-3. **Run Automated Test Suite**:
-   ```bash
-   backend\.venv\Scripts\python.exe -m pytest backend/app/tests/ -v
-   ```
+### Database Verification:
+```bash
+# Inspect registered accounts
+backend\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'backend'); from app.database import SessionLocal; from app.models.account import Account; db = SessionLocal(); print([(a.id, a.name, a.bank_name, a.account_type, a.current_balance, a.account_number) for a in db.query(Account).all()]); db.close()"
+```
