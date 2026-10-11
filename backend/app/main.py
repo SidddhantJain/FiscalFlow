@@ -6,7 +6,7 @@ import os
 from app.database import engine, Base, SessionLocal
 from app.models.user import User
 from app.models.category import Category
-from app.routers import accounts, transactions, budgets, goals, subscriptions, investments, reports, insights, statements
+from app.routers import accounts, transactions, budgets, goals, subscriptions, investments, reports, insights, statements, sips
 
 from datetime import date, datetime, timedelta
 from sqlalchemy import text
@@ -33,6 +33,29 @@ def run_sqlite_migrations():
             conn.commit()
         if "notes" not in b_cols:
             conn.execute(text("ALTER TABLE budgets ADD COLUMN notes VARCHAR"))
+            conn.commit()
+
+        # 3. Check accounts table for 'account_number' column
+        acc_result = conn.execute(text("PRAGMA table_info(accounts)")).fetchall()
+        acc_cols = [row[1] for row in acc_result]
+        if "account_number" not in acc_cols:
+            conn.execute(text("ALTER TABLE accounts ADD COLUMN account_number VARCHAR"))
+            conn.commit()
+
+        # 4. Check investments table for symbol, broker, buy_date, account_id
+        inv_result = conn.execute(text("PRAGMA table_info(investments)")).fetchall()
+        inv_cols = [row[1] for row in inv_result]
+        if "symbol" not in inv_cols:
+            conn.execute(text("ALTER TABLE investments ADD COLUMN symbol VARCHAR"))
+            conn.commit()
+        if "broker" not in inv_cols:
+            conn.execute(text("ALTER TABLE investments ADD COLUMN broker VARCHAR"))
+            conn.commit()
+        if "buy_date" not in inv_cols:
+            conn.execute(text("ALTER TABLE investments ADD COLUMN buy_date DATETIME"))
+            conn.commit()
+        if "account_id" not in inv_cols:
+            conn.execute(text("ALTER TABLE investments ADD COLUMN account_id INTEGER"))
             conn.commit()
 
 # Run migration check
@@ -168,6 +191,7 @@ app.include_router(investments.router)
 app.include_router(reports.router)
 app.include_router(insights.router)
 app.include_router(statements.router)
+app.include_router(sips.router)
 
 # Mount frontend static files directory
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))

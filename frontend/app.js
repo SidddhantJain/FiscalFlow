@@ -17,6 +17,8 @@ const state = {
     insights: [],
     goals: [],
     subscriptions: [],
+    investmentsAnalysis: null,
+    sips: [],
     netWorth: { net_worth: 0, total_assets: 0, total_liabilities: 0, breakdown: {} },
     healthScore: { score: 100, risk_level: 'LOW', metrics: {}, recommendations: [] },
     forecast: { current_total_balance: 0, expected_month_end_balance: 0, projected_income_remaining: 0, projected_expense_remaining: 0 },
@@ -52,7 +54,9 @@ async function initApp() {
             fetchForecast(),
             fetchFYReport(),
             fetchBudgets(),
-            fetchBudgetSummary()
+            fetchBudgetSummary(),
+            fetchInvestmentsAnalysis(),
+            fetchSips()
         ]);
         // Transactions are fetched separately as they depend on categories/accounts
         await fetchTransactions();
@@ -154,6 +158,9 @@ function setupEventListeners() {
     document.getElementById('edit-budget-form')?.addEventListener('submit', handleEditBudget);
     document.getElementById('add-budget-form')?.addEventListener('submit', handleAddBudget);
     document.getElementById('edit-tag-form')?.addEventListener('submit', handleEditTag);
+    document.getElementById('import-demat-form')?.addEventListener('submit', handleImportDemat);
+    document.getElementById('add-holding-form')?.addEventListener('submit', handleAddHolding);
+    document.getElementById('add-sip-form')?.addEventListener('submit', handleAddSip);
     
     // Natural Language Query listeners
     const nlpInput = document.getElementById('nlp-query-input');
@@ -224,6 +231,9 @@ function renderTabContent(tabName) {
             break;
         case 'master-budget':
             renderMasterBudgetTab();
+            break;
+        case 'investments':
+            renderInvestmentsTab();
             break;
         case 'insights':
             renderInsightsTab();
@@ -345,13 +355,13 @@ function populateAccountDropdowns() {
     }
 
     // Modal forms account options
-    const accSelectors = ['tx-account', 'tx-dest-account', 'import-account', 'sub-account'];
+    const accSelectors = ['tx-account', 'tx-dest-account', 'import-account', 'sub-account', 'demat-account-select', 'sip-account'];
     accSelectors.forEach(id => {
         const sel = document.getElementById(id);
         if (sel) {
             sel.innerHTML = id === 'tx-dest-account' ? '<option value="">-- No Destination (Non-Transfer) --</option>' : '';
             state.accounts.forEach(acc => {
-                sel.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+                sel.innerHTML += `<option value="${acc.id}">${acc.name} (${acc.bank_name || acc.account_type})</option>`;
             });
         }
     });
@@ -1085,14 +1095,15 @@ async function handleAddAccount(e) {
     const name = document.getElementById('acc-name').value;
     const bank_name = document.getElementById('acc-bank').value;
     const account_type = document.getElementById('acc-type').value;
-    const opening_balance = parseFloat(document.getElementById('acc-balance').value);
+    const account_number = document.getElementById('acc-number')?.value || null;
+    const opening_balance = parseFloat(document.getElementById('acc-balance').value) || 0.0;
     const currency = 'INR';
 
     try {
         const res = await fetch(`${API_BASE}/accounts/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, bank_name, account_type, opening_balance, currency })
+            body: JSON.stringify({ name, bank_name, account_type, account_number, opening_balance, currency })
         });
         
         if (!res.ok) throw new Error("Account creation failed");
@@ -1103,7 +1114,7 @@ async function handleAddAccount(e) {
         
         // Refresh & render
         showLoading(true);
-        await Promise.all([fetchAccounts(), fetchNetWorth(), fetchHealthScore(), fetchForecast()]);
+        await Promise.all([fetchAccounts(), fetchNetWorth(), fetchHealthScore(), fetchForecast(), fetchInvestmentsAnalysis()]);
         renderAll();
     } catch (err) {
         showToast("Error creating account: " + err.message, "error");
@@ -1998,3 +2009,457 @@ window.reapplyAllTagRules = async function() {
         showLoading(false);
     }
 };
+
+// ==========================================
+// INVESTMENTS, DEMAT & SIP TRACKER ENGINE
+// ==========================================
+
+async function fetchInvestmentsAnalysis() {
+    try {
+        const res = await fetch(`${API_BASE}/investments/analysis`);
+        if (!res.ok) throw new Error("Investments analysis load failed");
+        state.investmentsAnalysis = await res.json();
+    } catch (err) {
+        console.warn("Investments analysis fetch error:", err);
+    }
+}
+
+async function fetchSips() {
+    try {
+        const res = await fetch(`${API_BASE}/sips/`);
+        if (!res.ok) throw new Error("SIPs load failed");
+        state.sips = await res.json();
+    } catch (err) {
+        console.warn("SIPs fetch error:", err);
+    }
+}
+
+window.openAddAccountModal = function() {
+    const form = document.getElementById('add-account-form');
+    if (form) form.reset();
+    openModal('add-account-modal');
+};
+
+window.openImportDematModal = function() {
+    populateAccountDropdowns();
+    openModal('import-demat-modal');
+};
+
+window.openAddHoldingModal = function() {
+    const form = document.getElementById('add-holding-form');
+    if (form) form.reset();
+    openModal('add-holding-modal');
+};
+
+window.openAddSipModal = function() {
+    const form = document.getElementById('add-sip-form');
+    if (form) form.reset();
+    populateAccountDropdowns();
+    openModal('add-sip-modal');
+};
+
+async function handleImportDemat(e) {
+    e.preventDefault();
+    const account_id = document.getElementById('demat-account-select').value;
+    const broker_type = document.getElementById('demat-broker-type').value;
+    const fileInput = document.getElementById('demat-file-input');
+
+    if (!account_id) {
+        showToast("Please select a Demat / Broker account first", "error");
+        return;
+    }
+    if (!fileInput || !fileInput.files[0]) {
+        showToast("Please choose a Demat statement file to upload", "error");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('account_id', account_id);
+    formData.append('broker_type', broker_type);
+    formData.append('file', fileInput.files[0]);
+
+    try {
+        showLoading(true);
+        const res = await fetch(`${API_BASE}/investments/import-demat`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.detail || "Demat Statement import failed");
+        }
+
+        const data = await res.json();
+        showToast(data.message || "Demat statement uploaded and synced successfully!", "success");
+        closeModal('import-demat-modal');
+        document.getElementById('import-demat-form').reset();
+
+        await Promise.all([
+            fetchAccounts(),
+            fetchInvestmentsAnalysis(),
+            fetchTransactions(),
+            fetchNetWorth(),
+            fetchStatementFiles()
+        ]);
+        renderAll();
+    } catch (err) {
+        showToast("Error importing Demat statement: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function handleAddHolding(e) {
+    e.preventDefault();
+    const name = document.getElementById('holding-name').value;
+    const symbol = document.getElementById('holding-symbol').value || name.slice(0, 6).toUpperCase();
+    const asset_class = document.getElementById('holding-asset-class').value;
+    const broker = document.getElementById('holding-broker').value || 'Groww';
+    const units = parseFloat(document.getElementById('holding-units').value) || 1.0;
+    const purchase_price = parseFloat(document.getElementById('holding-buy-price').value) || 0.0;
+    const current_value = parseFloat(document.getElementById('holding-curr-val').value) || (units * purchase_price);
+
+    try {
+        showLoading(true);
+        const res = await fetch(`${API_BASE}/investments/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                symbol,
+                asset_class,
+                broker,
+                units,
+                purchase_price,
+                current_value
+            })
+        });
+
+        if (!res.ok) throw new Error("Failed to save investment holding");
+
+        showToast(`Holding ${symbol} saved to portfolio!`, "success");
+        closeModal('add-holding-modal');
+        document.getElementById('add-holding-form').reset();
+
+        await Promise.all([fetchInvestmentsAnalysis(), fetchNetWorth()]);
+        renderInvestmentsTab();
+    } catch (err) {
+        showToast("Error saving holding: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function handleAddSip(e) {
+    e.preventDefault();
+    const scheme_name = document.getElementById('sip-scheme-name').value;
+    const amount = parseFloat(document.getElementById('sip-amount').value);
+    const sip_day_of_month = parseInt(document.getElementById('sip-day').value) || 5;
+    const broker = document.getElementById('sip-broker').value;
+    const asset_class = document.getElementById('sip-asset-class').value;
+    const account_id = document.getElementById('sip-account').value ? parseInt(document.getElementById('sip-account').value) : null;
+
+    try {
+        showLoading(true);
+        const res = await fetch(`${API_BASE}/sips/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                scheme_name,
+                amount,
+                sip_day_of_month,
+                broker,
+                asset_class,
+                account_id,
+                status: 'ACTIVE'
+            })
+        });
+
+        if (!res.ok) throw new Error("Failed to create SIP schedule");
+
+        showToast(`SIP for ${scheme_name} (₹${amount}/mo) scheduled on ${sip_day_of_month}th!`, "success");
+        closeModal('add-sip-modal');
+        document.getElementById('add-sip-form').reset();
+
+        await Promise.all([fetchSips(), fetchInvestmentsAnalysis()]);
+        renderInvestmentsTab();
+    } catch (err) {
+        showToast("Error scheduling SIP: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+window.executeSip = async function(sipId) {
+    try {
+        showLoading(true);
+        const res = await fetch(`${API_BASE}/sips/${sipId}/execute`, { method: 'POST' });
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.detail || "SIP execution failed");
+        }
+        const data = await res.json();
+        showToast(data.message || "SIP investment executed and recorded!", "success");
+
+        await Promise.all([fetchSips(), fetchAccounts(), fetchTransactions(), fetchNetWorth(), fetchInvestmentsAnalysis()]);
+        renderAll();
+    } catch (err) {
+        showToast("Error executing SIP: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+};
+
+window.deleteSip = async function(sipId) {
+    if (!confirm("Are you sure you want to delete this SIP schedule?")) return;
+    try {
+        showLoading(true);
+        const res = await fetch(`${API_BASE}/sips/${sipId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error("Failed to delete SIP");
+        showToast("SIP schedule removed", "success");
+        await Promise.all([fetchSips(), fetchInvestmentsAnalysis()]);
+        renderInvestmentsTab();
+    } catch (err) {
+        showToast("Error: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+};
+
+window.deleteHolding = async function(holdingId) {
+    if (!confirm("Are you sure you want to delete this portfolio holding?")) return;
+    try {
+        showLoading(true);
+        const res = await fetch(`${API_BASE}/investments/${holdingId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error("Failed to delete holding");
+        showToast("Holding removed from portfolio", "success");
+        await Promise.all([fetchInvestmentsAnalysis(), fetchNetWorth()]);
+        renderInvestmentsTab();
+    } catch (err) {
+        showToast("Error: " + err.message, "error");
+    } finally {
+        showLoading(false);
+    }
+};
+
+function renderInvestmentsTab() {
+    const fmt = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+    const fmtDec = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    const data = state.investmentsAnalysis || {
+        portfolio_summary: { total_invested: 0, current_value: 0, total_pnl: 0, total_pnl_pct: 0 },
+        sip_analytics: { monthly_committed_sip: 0, master_budget_target: 5500, sip_alignment_pct: 0, active_sips_count: 0, upcoming_sips: [] },
+        asset_allocation: {},
+        broker_breakdown: {},
+        holdings: []
+    };
+
+    const summary = data.portfolio_summary || {};
+    const sipInfo = data.sip_analytics || {};
+
+    // 1. Top Metric Cards
+    const totalValEl = document.getElementById('inv-total-value');
+    if (totalValEl) totalValEl.textContent = fmt.format(summary.current_value || 0);
+
+    const totalCostEl = document.getElementById('inv-total-cost');
+    if (totalCostEl) totalCostEl.textContent = fmt.format(summary.total_invested || 0);
+
+    const totalPnlEl = document.getElementById('inv-total-pnl-val');
+    if (totalPnlEl) {
+        const pnl = summary.total_pnl || 0;
+        const sign = pnl >= 0 ? '+' : '';
+        totalPnlEl.textContent = `${sign}${fmt.format(pnl)}`;
+        totalPnlEl.className = `text-2xl font-extrabold font-data-mono ${pnl >= 0 ? 'text-secondary' : 'text-rose-600'}`;
+    }
+
+    const pnlBadgeEl = document.getElementById('inv-total-pnl-badge');
+    if (pnlBadgeEl) {
+        const pct = summary.total_pnl_pct || 0;
+        const sign = pct >= 0 ? '+' : '';
+        pnlBadgeEl.textContent = `${sign}${pct.toFixed(2)}% Overall Returns`;
+        pnlBadgeEl.className = `text-xs font-bold mt-2 flex items-center gap-1 font-data-mono ${pct >= 0 ? 'text-secondary' : 'text-rose-600'}`;
+    }
+
+    const monthlySipEl = document.getElementById('inv-monthly-sip');
+    if (monthlySipEl) monthlySipEl.textContent = fmt.format(sipInfo.monthly_committed_sip || 0);
+
+    const sipNoteEl = document.getElementById('inv-sip-target-note');
+    if (sipNoteEl) {
+        const committed = sipInfo.monthly_committed_sip || 0;
+        const target = sipInfo.master_budget_target || 5500;
+        const pct = sipInfo.sip_alignment_pct || 0;
+        if (committed >= target) {
+            sipNoteEl.innerHTML = `<span class="material-symbols-outlined text-secondary text-sm">check_circle</span> Target ₹5,500/mo Achieved (${pct}%)`;
+            sipNoteEl.className = "text-xs font-bold text-secondary mt-2 flex items-center gap-1";
+        } else {
+            sipNoteEl.innerHTML = `<span class="material-symbols-outlined text-amber-600 text-sm">info</span> ₹${target - committed} left to reach ₹5,500 Master Plan`;
+            sipNoteEl.className = "text-xs font-bold text-amber-700 mt-2 flex items-center gap-1";
+        }
+    }
+
+    // 2. Holdings Table
+    const countBadge = document.getElementById('holdings-count-badge');
+    if (countBadge) countBadge.textContent = `${data.holdings.length} Securities`;
+
+    const tableBody = document.getElementById('inv-holdings-table-body');
+    if (tableBody) {
+        tableBody.innerHTML = '';
+        if (data.holdings.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center py-8 text-on-surface-variant text-xs">
+                        No investment holdings recorded. Click <strong>+ Add Stock / Holding</strong> or <strong>Upload Demat Statement</strong> to import your portfolio.
+                    </td>
+                </tr>`;
+        } else {
+            data.holdings.forEach(h => {
+                const isProfit = h.pnl >= 0;
+                const pnlSign = isProfit ? '+' : '';
+                const pnlClass = isProfit ? 'text-secondary' : 'text-rose-600';
+
+                let assetBadgeColor = 'bg-blue-100 text-blue-800';
+                if (h.asset_class === 'MUTUAL_FUND') assetBadgeColor = 'bg-purple-100 text-purple-800';
+                if (h.asset_class === 'ELSS') assetBadgeColor = 'bg-emerald-100 text-emerald-800';
+                if (h.asset_class === 'ETF') assetBadgeColor = 'bg-amber-100 text-amber-800';
+                if (h.asset_class === 'GOLD') assetBadgeColor = 'bg-yellow-100 text-yellow-800';
+
+                tableBody.innerHTML += `
+                    <tr class="hover:bg-surface-container-low transition-colors">
+                        <td class="px-4 py-3">
+                            <div class="font-bold text-primary">${h.name}</div>
+                            <div class="text-[10px] text-on-surface-variant font-data-mono">${h.symbol || ''}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${assetBadgeColor}">${h.asset_class}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-0.5 bg-surface-container-high rounded text-[10px] font-bold text-primary">${h.broker}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right font-data-mono font-medium">${h.units !== null ? h.units : '—'}</td>
+                        <td class="px-4 py-3 text-right font-data-mono font-medium">${fmtDec.format(h.purchase_price)}</td>
+                        <td class="px-4 py-3 text-right font-data-mono font-bold text-primary">${fmt.format(h.current_value)}</td>
+                        <td class="px-4 py-3 text-right font-data-mono font-bold ${pnlClass}">
+                            ${pnlSign}${fmt.format(h.pnl)}<br/>
+                            <span class="text-[10px] font-medium">(${pnlSign}${h.pnl_pct}%)</span>
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <button class="material-symbols-outlined text-outline hover:text-rose-600 transition-colors text-[18px]" onclick="deleteHolding(${h.id})" title="Delete Holding">delete</button>
+                        </td>
+                    </tr>`;
+            });
+        }
+    }
+
+    // 3. Broker Breakdown
+    const brokerContainer = document.getElementById('inv-broker-distribution');
+    if (brokerContainer) {
+        brokerContainer.innerHTML = '';
+        const brokers = Object.entries(data.broker_breakdown || {});
+        const totalVal = summary.current_value || 1;
+        if (brokers.length === 0) {
+            brokerContainer.innerHTML = '<p class="text-xs text-on-surface-variant">No Demat accounts synced yet.</p>';
+        } else {
+            brokers.forEach(([broker, val]) => {
+                const pct = Math.round((val / totalVal) * 100);
+                brokerContainer.innerHTML += `
+                    <div>
+                        <div class="flex justify-between items-center text-xs mb-1">
+                            <span class="font-bold text-primary flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-primary"></span> ${broker}
+                            </span>
+                            <span class="font-data-mono font-bold">${fmt.format(val)} (${pct}%)</span>
+                        </div>
+                        <div class="w-full bg-surface-container-high rounded-full h-2 overflow-hidden">
+                            <div class="bg-primary h-2 rounded-full" style="width: ${pct}%"></div>
+                        </div>
+                    </div>`;
+            });
+        }
+    }
+
+    // 4. Asset Class Breakdown
+    const assetContainer = document.getElementById('inv-asset-distribution');
+    if (assetContainer) {
+        assetContainer.innerHTML = '';
+        const assets = Object.entries(data.asset_allocation || {});
+        const totalVal = summary.current_value || 1;
+        if (assets.length === 0) {
+            assetContainer.innerHTML = '<p class="text-xs text-on-surface-variant">No assets allocated yet.</p>';
+        } else {
+            assets.forEach(([assetClass, val]) => {
+                const pct = Math.round((val / totalVal) * 100);
+                assetContainer.innerHTML += `
+                    <div>
+                        <div class="flex justify-between items-center text-xs mb-1">
+                            <span class="font-bold text-primary flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-secondary"></span> ${assetClass}
+                            </span>
+                            <span class="font-data-mono font-bold">${fmt.format(val)} (${pct}%)</span>
+                        </div>
+                        <div class="w-full bg-surface-container-high rounded-full h-2 overflow-hidden">
+                            <div class="bg-secondary h-2 rounded-full" style="width: ${pct}%"></div>
+                        </div>
+                    </div>`;
+            });
+        }
+    }
+
+    // 5. SIP Schedules Grid
+    const sipGrid = document.getElementById('inv-sip-cards-grid');
+    if (sipGrid) {
+        sipGrid.innerHTML = '';
+        const sipsList = state.sips || [];
+        if (sipsList.length === 0) {
+            sipGrid.innerHTML = `
+                <div class="col-span-full py-8 text-center text-on-surface-variant text-xs">
+                    No active SIP schedules. Click <strong>+ Add SIP Schedule</strong> to track your recurring monthly mutual fund investments.
+                </div>`;
+        } else {
+            sipsList.forEach(s => {
+                const daysLeft = s.days_remaining;
+                let daysBadgeColor = 'bg-blue-100 text-blue-800';
+                let daysText = `In ${daysLeft} days`;
+                if (daysLeft === 0) {
+                    daysBadgeColor = 'bg-emerald-100 text-emerald-800';
+                    daysText = 'Today!';
+                } else if (daysLeft < 0) {
+                    daysBadgeColor = 'bg-amber-100 text-amber-800';
+                    daysText = 'Due';
+                }
+
+                sipGrid.innerHTML += `
+                    <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm flex flex-col justify-between hover:border-primary transition-all group">
+                        <div>
+                            <div class="flex justify-between items-start mb-3">
+                                <span class="px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px] font-bold">${s.broker}</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${daysBadgeColor}">${daysText}</span>
+                            </div>
+                            <h4 class="font-bold text-primary text-sm line-clamp-1">${s.scheme_name}</h4>
+                            <div class="flex items-center gap-2 mt-2">
+                                <span class="text-xl font-extrabold text-primary font-data-mono">${fmt.format(s.amount)}</span>
+                                <span class="text-[11px] text-on-surface-variant font-medium">/ month</span>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-outline-variant/60 text-xs space-y-1 text-on-surface-variant">
+                                <div class="flex justify-between">
+                                    <span>Cadence:</span>
+                                    <span class="font-bold text-primary">${s.sip_day_of_month}th of every month</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Next Execution Date:</span>
+                                    <span class="font-bold text-primary font-data-mono">${s.next_sip_date}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-5 pt-3 border-t border-outline-variant/60 flex items-center justify-between gap-2">
+                            <button class="px-3 py-1.5 bg-secondary-container text-on-secondary-container hover:bg-secondary-fixed rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm transition-all" onclick="executeSip(${s.id})">
+                                <span class="material-symbols-outlined text-sm">play_circle</span> Record Payment
+                            </button>
+                            <button class="material-symbols-outlined text-outline hover:text-rose-600 transition-colors text-[18px]" onclick="deleteSip(${s.id})" title="Delete SIP">delete</button>
+                        </div>
+                    </div>`;
+            });
+        }
+    }
+}
+

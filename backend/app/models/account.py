@@ -10,7 +10,8 @@ class Account(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     bank_name = Column(String, nullable=True)
-    account_type = Column(String, nullable=False)  # SAVINGS, SALARY, CREDIT_CARD, WALLET, CASH, INVESTMENT
+    account_type = Column(String, nullable=False)  # SAVINGS, SALARY, CURRENT, DEMAT, CREDIT_CARD, WALLET, CASH, INVESTMENT
+    account_number = Column(String, nullable=True)  # Bank A/c No or Demat Client ID
     opening_balance = Column(Numeric(12, 2), default=0.00, nullable=False)
     current_balance = Column(Numeric(12, 2), default=0.00, nullable=False)
     currency = Column(String, default="INR", nullable=False)

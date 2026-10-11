@@ -115,11 +115,11 @@ Transactions are automatically tagged and categorized on import or manual entry 
 ### 3. `StatementFile` (`app.models.statement_file`)
 - `id`: Integer (PK)
 - `user_id`: Integer (FK -> `User.id`)
-- `filename`: Original uploaded filename (e.g. `Axis_Statement_Oct2024.csv`)
+- `filename`: Original uploaded filename (e.g. `Axis_Statement_Oct2024.csv` or `groww_holdings.csv`)
 - `saved_filename`: Local persistent path in `backend/uploads/statements/`
 - `file_size`: Size in bytes
-- `bank_type`: Parser type (e.g. `AXIS`, `HDFC`, `SBI`, `GENERIC`)
-- `transaction_count`: Number of imported transactions
+- `bank_type`: Parser type (`AXIS_CSV`, `HDFC_CSV`, `SBI_CSV`, `GROWW_DEMAT`, `ANGELONE_DEMAT`, `ZERODHA_DEMAT`, `GENERIC_DEMAT`)
+- `transaction_count`: Number of imported transactions / holdings
 - `upload_date`: Timestamp of upload
 
 ### 4. `UserTagRule` (`app.models.tag_rule`)
@@ -130,35 +130,67 @@ Transactions are automatically tagged and categorized on import or manual entry 
 - `category_id`: Associated category ID (optional)
 - `match_count`: How many times this rule has been matched
 
+### 5. `Investment` (`app.models.investment`)
+- `id`: Integer (PK)
+- `user_id`: Integer (FK -> `User.id`)
+- `name`: Security / Fund Name
+- `symbol`: Ticker / Stock symbol (e.g. `TCS`, `INFY`, `PPFAS`)
+- `asset_class`: `STOCK`, `MUTUAL_FUND`, `ELSS`, `INDEX_FUND`, `ETF`, `GOLD`
+- `broker`: Broker platform (`Groww`, `Angel One`, `Zerodha`, `Direct AMC`)
+- `account_id`: Associated Demat account ID
+- `units`: Total quantity / shares / MF units
+- `purchase_price`: Avg purchase cost per unit
+- `current_value`: Total current market valuation
+- `buy_date`: Purchase / SIP date
+- `last_updated`: Timestamp
+
+### 6. `SipSchedule` (`app.models.sip`)
+- `id`: Integer (PK)
+- `user_id`: Integer (FK -> `User.id`)
+- `scheme_name`: Mutual Fund / Stock Scheme
+- `amount`: Monthly SIP Amount (e.g. ₹2,500, ₹3,000 -> ₹5,500 Master Plan)
+- `sip_day_of_month`: Day of execution (e.g. 5th, 10th, 15th)
+- `next_sip_date`: Auto-calculated next execution date
+- `broker`: Broker platform (`Groww`, `Angel One`, `Zerodha`)
+- `status`: `ACTIVE`, `PAUSED`, `COMPLETED`
+- `frequency`: `MONTHLY`
+
 ---
 
-## 6. Repetitive Transaction Auto-Tagging Memory
-To eliminate repetitive manual tagging:
-- When a user adds/edits tags on a transaction, `learn_user_tag_rule()` creates or updates a persistent `UserTagRule`.
-- Future imports and manual transaction entries query `UserTagRule` via `apply_learned_tag_rules()` and auto-apply the user's custom tags.
-- The user can view, manage, and re-apply learned rules across all historical transactions with one click via `POST /statements/tag-rules/apply-all`.
+## 6. Demat Statements & Financial Analysis Tool
+- **Demat Statements**: Ingestion of holdings and trade records from Groww, Angel One, and Zerodha statements. Auto-updates portfolio holdings and records investment transactions in the ledger.
+- **Financial Analysis Engine (`GET /investments/analysis`)**: Computes total invested capital, live portfolio valuation, net unrealized P&L (₹ and %), benchmark CAGR (~14.8%), broker distribution, and asset allocation.
+- **SIP Tracker & Calendar**: Tracks monthly SIP amounts, countdown to next SIP execution date, and verifies allocation against the ₹5,500/month Master Plan target. Single-click SIP execution records corresponding ledger transactions.
 
 ---
 
 ## 7. Key API Endpoints
 
+- `GET /accounts/`: Lists all bank and Demat accounts.
+- `POST /accounts/`: Registers bank or Demat accounts with `account_number`, `bank_name`, and `account_type`.
 - `GET /transactions/?tag=Food&search=...`: Lists transactions filtered by date, type, account, and tag.
 - `POST /transactions/`: Creates a transaction with automatic tag extraction and learned rule matching.
 - `PUT /transactions/{tx_id}`: Updates transaction fields, tags, category, and updates learned tag memory.
 - `DELETE /transactions/{tx_id}`: Reverts account balance and deletes record.
 - `POST /transactions/import`: Parses and persistently stores bank statement files, extracts transactions, auto-categorizes, and applies learned tags.
-- `GET /statements/`: Lists all uploaded and stored statement files.
+- `GET /statements/`: Lists all uploaded and stored statement files (Bank & Demat).
 - `GET /statements/{file_id}/download`: Downloads the exact original raw statement file uploaded by the user.
 - `GET /statements/export/axis`: Downloads current transactions formatted identically to Axis Bank statements (`SRL NO`, `Tran Date`, `CHQNO`, `PARTICULARS`, `DR`, `CR`, `BAL`, `SOL`).
 - `GET /statements/export/full-csv`: Downloads full transaction ledger with tags, categories, accounts, and reference numbers.
 - `GET /statements/tag-rules`: Lists all learned repetitive tag rules.
 - `POST /statements/tag-rules/apply-all`: Scans all past transactions and re-applies learned tag rules.
+- `GET /investments/analysis`: Financial analysis engine returning portfolio value, cost, P&L, broker & asset split, and SIP metrics.
+- `POST /investments/import-demat`: Ingests Groww / Angel One / Zerodha Demat statement files and updates portfolio.
+- `GET /investments/`: Lists individual investment holdings.
+- `POST /investments/`: Adds a stock/mutual fund holding.
+- `DELETE /investments/{id}`: Deletes an investment holding.
+- `GET /sips/`: Lists recurring SIP schedules with next execution dates and countdown.
+- `POST /sips/`: Creates a recurring SIP schedule.
+- `POST /sips/{id}/execute`: Records a live execution transaction for the scheduled SIP.
+- `DELETE /sips/{id}`: Deletes an SIP schedule.
 - `GET /budgets/`: Lists all user budgets with live-computed spending.
 - `GET /budgets/summary`: Returns master planned income, actual spent, flex buffer, distribution percentages, and overgrown alerts.
 - `POST /budgets/reset-master`: Resets and seeds the exact Master Budget (₹31,000 cash flow).
-- `PUT /budgets/{budget_id}`: Modifies budget target amount, name, or strategy notes.
-- `POST /budgets/`: Creates a custom budget line item.
-- `DELETE /budgets/{budget_id}`: Deletes a budget line item.
 
 ---
 
@@ -168,7 +200,7 @@ To eliminate repetitive manual tagging:
    ```bash
    python start.py
    ```
-   Opens `http://127.0.0.1:8000` with live dashboard, transactions ledger, master budget tracker, statements manager, and AI insights.
+   Opens `http://127.0.0.1:8000` with live dashboard, transactions ledger, master budget tracker, investments & Demat hub, statements manager, and AI insights.
 
 2. **Stop Server**:
    ```bash

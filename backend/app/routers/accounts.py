@@ -21,6 +21,7 @@ def create_account(account: AccountCreate, db: Session = Depends(get_db), user_i
         name=account.name,
         bank_name=account.bank_name,
         account_type=account.account_type,
+        account_number=account.account_number,
         opening_balance=account.opening_balance,
         current_balance=account.opening_balance, # Initial current balance equals opening balance
         currency=account.currency

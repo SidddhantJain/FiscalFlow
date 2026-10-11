@@ -14,6 +14,7 @@ from app.models.insight import Insight
 
 from app.models.statement_file import StatementFile
 from app.models.tag_rule import UserTagRule
+from app.models.sip import SipSchedule
 
 __all__ = [
     "Base",
@@ -25,6 +26,7 @@ __all__ = [
     "Goal",
     "Subscription",
     "Investment",
+    "SipSchedule",
     "AssetLiability",
     "Receipt",
     "FinancialYear",
