@@ -4,7 +4,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
-from app.database import get_db
+from app.database import get_db, utc_now
 from app.models.investment import Investment
 from app.models.account import Account
 from app.models.statement_file import StatementFile
@@ -32,8 +32,8 @@ def create_investment(inv: InvestmentCreate, db: Session = Depends(get_db), user
         units=inv.units,
         purchase_price=inv.purchase_price,
         current_value=inv.current_value,
-        buy_date=inv.buy_date or datetime.utcnow(),
-        last_updated=datetime.utcnow()
+        buy_date=inv.buy_date or utc_now(),
+        last_updated=utc_now()
     )
     db.add(db_inv)
     db.commit()
@@ -195,7 +195,7 @@ async def import_demat_statement(
         file_size=len(contents),
         bank_type=broker_type,
         transaction_count=result["imported_transactions"] + result["imported_holdings"],
-        upload_date=datetime.utcnow()
+        upload_date=utc_now()
     )
     db.add(stmt_file)
     db.commit()
@@ -218,7 +218,7 @@ def update_investment(inv_id: int, inv_update: InvestmentUpdate, db: Session = D
     for key, value in update_data.items():
         setattr(db_inv, key, value)
         
-    db_inv.last_updated = datetime.utcnow()
+    db_inv.last_updated = utc_now()
     db.commit()
     db.refresh(db_inv)
     return db_inv

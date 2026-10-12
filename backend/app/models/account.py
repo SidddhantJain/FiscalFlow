@@ -1,7 +1,6 @@
-from datetime import datetime
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.database import Base, utc_now
 
 class Account(Base):
     __tablename__ = "accounts"
@@ -15,8 +14,8 @@ class Account(Base):
     opening_balance = Column(Numeric(12, 2), default=0.00, nullable=False)
     current_balance = Column(Numeric(12, 2), default=0.00, nullable=False)
     currency = Column(String, default="INR", nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="accounts")

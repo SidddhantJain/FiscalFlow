@@ -1,7 +1,6 @@
-from datetime import datetime
 from sqlalchemy import Column, Integer, String, Numeric, Date, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.database import Base, utc_now
 
 class Subscription(Base):
     __tablename__ = "subscriptions"
@@ -14,8 +13,8 @@ class Subscription(Base):
     billing_cycle = Column(String, nullable=False, default="MONTHLY")  # MONTHLY, ANNUAL
     next_renewal_date = Column(Date, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # Relationships
     account = relationship("Account", back_populates="subscriptions")

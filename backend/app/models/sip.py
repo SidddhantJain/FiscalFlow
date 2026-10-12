@@ -1,7 +1,7 @@
-from datetime import datetime, date
+from datetime import date
 from sqlalchemy import Column, Integer, String, Numeric, Date, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.database import Base, utc_now
 
 class SipSchedule(Base):
     __tablename__ = "sip_schedules"
@@ -20,8 +20,8 @@ class SipSchedule(Base):
     folio_number = Column(String, nullable=True)
     status = Column(String, default="ACTIVE", nullable=False)  # ACTIVE, PAUSED, COMPLETED
     notes = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # Relationships
     user = relationship("User")

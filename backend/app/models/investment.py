@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey
-from app.database import Base
+from app.database import Base, utc_now
 
 class Investment(Base):
     __tablename__ = "investments"
@@ -16,6 +16,6 @@ class Investment(Base):
     purchase_price = Column(Numeric(12, 2), nullable=False)  # Avg purchase price per unit
     current_value = Column(Numeric(12, 2), nullable=False)  # Current total value
     buy_date = Column(DateTime, nullable=True)  # Purchase or SIP date
-    last_updated = Column(DateTime, default=datetime.utcnow, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    last_updated = Column(DateTime, default=utc_now, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)

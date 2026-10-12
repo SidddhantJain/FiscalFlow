@@ -1,7 +1,6 @@
-from datetime import datetime
 from sqlalchemy import Column, Integer, Numeric, Date, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.database import Base, utc_now
 
 class Budget(Base):
     __tablename__ = "budgets"
@@ -15,8 +14,8 @@ class Budget(Base):
     end_date = Column(Date, nullable=False)
     name = Column(String, nullable=True)  # Optional custom budget line item name
     notes = Column(String, nullable=True) # Strategy & notes (e.g. "26 working days @ ₹100-150/day")
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="budgets")

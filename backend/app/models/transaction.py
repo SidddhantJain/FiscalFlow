@@ -1,7 +1,6 @@
-from datetime import datetime
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, Date, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.database import Base, utc_now
 
 class Transaction(Base):
     __tablename__ = "transactions"
@@ -18,8 +17,8 @@ class Transaction(Base):
     is_recurring = Column(Boolean, default=False, nullable=False)
     tags = Column(String, nullable=True)  # Comma-separated tags (e.g. "Food, Cafe, UPI")
     notes = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # Relationships
     account = relationship("Account", foreign_keys=[account_id], back_populates="transactions")

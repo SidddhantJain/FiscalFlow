@@ -1,6 +1,5 @@
-from datetime import datetime
 from sqlalchemy import Column, Integer, String, Date, DateTime, Boolean
-from app.database import Base
+from app.database import Base, utc_now
 
 class FinancialYear(Base):
     __tablename__ = "financial_years"
@@ -10,4 +9,4 @@ class FinancialYear(Base):
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     is_locked = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)

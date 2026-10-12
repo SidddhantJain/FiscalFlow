@@ -1,7 +1,6 @@
-from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.database import Base, utc_now
 
 class StatementFile(Base):
     __tablename__ = "statement_files"
@@ -14,7 +13,7 @@ class StatementFile(Base):
     file_size = Column(Integer, nullable=False, default=0)
     bank_type = Column(String, nullable=False, default="AXIS_CSV")
     transaction_count = Column(Integer, nullable=False, default=0)
-    upload_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    upload_date = Column(DateTime, default=utc_now, nullable=False)
 
     # Relationships
     user = relationship("User")

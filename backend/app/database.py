@@ -1,6 +1,11 @@
 import os
+from datetime import datetime, timezone
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
+
+def utc_now() -> datetime:
+    """Returns timezone-aware UTC datetime converted to naive datetime for clean database storage."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 # Canonical absolute path to fiscalflow.db in backend folder
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

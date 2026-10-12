@@ -1,6 +1,5 @@
-from datetime import datetime
 from sqlalchemy import Column, Integer, String, Numeric, Date, DateTime, ForeignKey
-from app.database import Base
+from app.database import Base, utc_now
 
 class AssetLiability(Base):
     __tablename__ = "assets_liabilities"
@@ -12,5 +11,5 @@ class AssetLiability(Base):
     category = Column(String, nullable=False)  # e.g., REAL_ESTATE, VEHICLE, HOME_LOAN, PERSONAL_LOAN
     value = Column(Numeric(12, 2), nullable=False)
     as_of_date = Column(Date, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
